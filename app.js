@@ -605,16 +605,55 @@ async function auth(mode){
 $("loginBtn").onclick=()=>auth("login");
 $("signupBtn").onclick=()=>auth("signup");
 
+
 async function init(){
-  if(!window.supabase||!URL||!KEY||KEY.includes("PASTE_")){
-    authMessage("Add your existing Supabase anon key in supabase-config.js.");
-    return;
-  }
-  sb=window.supabase.createClient(URL,KEY);
-  const {data}=await sb.auth.getSession();
-  if(data.session){
-    user=data.session.user;
-    try{await loadCloud()}catch(e){authMessage(e.message)}
+  try {
+    if (!window.supabase) {
+      authMessage("Supabase library load nahi hui. Internet aur script order check karein.");
+      return;
+    }
+
+    if (!URL || !KEY) {
+      authMessage("Supabase URL ya Anon Key missing hai.");
+      return;
+    }
+
+    if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(URL.trim())) {
+      authMessage("Supabase URL format incorrect hai. supabase-config.js check karein.");
+      return;
+    }
+
+    if (KEY.includes("PASTE_") || KEY.includes("yaha key")) {
+      authMessage("Please apni actual Supabase anon/public key paste karein.");
+      return;
+    }
+
+    sb = window.supabase.createClient(URL.trim(), KEY.trim());
+
+    authMessage("Checking account connection...");
+
+    const { data, error } = await sb.auth.getSession();
+
+    if (error) throw error;
+
+    if (data.session) {
+      user = data.session.user;
+      authMessage("Loading payroll data...");
+
+      try {
+        await loadCloud();
+        toast("Payroll account connected.");
+      } catch (e) {
+        authMessage("Database error: " + e.message);
+      }
+    } else {
+      authMessage("");
+    }
+
+  } catch (e) {
+    console.error("Initialization error:", e);
+    authMessage("Connection error: " + e.message);
   }
 }
+
 init();
