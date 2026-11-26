@@ -1,1010 +1,1036 @@
 
-const $ = id => document.getElementById(id);
+/* PRESERVER TRANS LLC - DRIVER SALARY APP */
 
-const STORAGE_KEY = "preserver_salary_cache_v2";
-const SUPABASE_URL = window.PRESERVER_SUPABASE_URL;
-const SUPABASE_ANON_KEY = window.PRESERVER_SUPABASE_ANON_KEY;
+const $ = id => document.getElementById(id);
+const DEFAULT_RATE = 0.52;
+const CACHE_KEY = "preserver_salary_cache_v2";
 
 let sb = null;
 let user = null;
 let db = {
-  rate: 0.52,
+  rate: DEFAULT_RATE,
   drivers: [],
   history: [],
-  settings: {}
-};
-
-let activeId = null;
-let currentMonth = new Date().toISOString().slice(0, 7);
-let saveTimer = null;
-
-const defaultSettings = {
-  company: "Preserver Trans LLC",
-  manager: "Saim Ali",
-  location: "USA California",
-  currency: "USD",
-  decimals: 0,
-  paymentMethod: "Cash",
-  addition: "Extra payment",
-  fine: "Fine",
-  advance: "Driver advance",
-  autoMiles: true,
-  confirmPay: true,
-  showZero: false
-};
-
-const uid = () =>
-  Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-
-const money = n => {
-  const currency = db.settings?.currency || "USD";
-  try {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency
-    }).format(Number(n) || 0);
-  } catch {
-    return "$" + (Number(n) || 0).toFixed(2);
+  deletedRecords: [],
+  settings: {
+    company: "PRESERVER TRANS LLC",
+    manager: "Saim Ali",
+    username: "Saim Ali",
+    designation: "Account Manager",
+    phone: "",
+    details: "",
+    managerPhoto: "",
+    location: "USA California",
+    currency: "$",
+    theme: "navy",
+    displayStyle: "modern",
+    fontSize: "normal"
   }
 };
 
-const num = n =>
-  (Number(n) || 0).toLocaleString("en-US", {
-    maximumFractionDigits: Number(db.settings?.decimals ?? 0)
-  });
+let currentStatement = null;
+let saveTimer = null;
+let managerPhotoData = "";
 
-const esc = s =>
-  String(s ?? "").replace(/[&<>"']/g, c => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;"
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, c => ({
+    "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
   }[c]));
+}
+
+function money(value) {
+  const currency = db.settings.currency || "$";
+  return currency + Number(value || 0).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+function number(value) {
+  return Number(value || 0);
+}
+
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function currentMonth() {
+  return new Date().toISOString().slice(0, 7);
+}
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
 
 function toast(message) {
-  $("toast").textContent = message;
-  $("toast").classList.add("show");
-  setTimeout(() => $("toast").classList.remove("show"), 2600);
+  const el = $("appToast");
+  if (!el) return;
+  el.textContent = message;
+  el.classList.add("show");
+  setTimeout(() => el.classList.remove("show"), 2800);
 }
 
-function setAuthMessage(message, good = false) {
-  $("authMessage").textContent = message;
-  $("authMessage").style.color = good ? "#16845b" : "#c84b4b";
+function setMessage(message, good = false) {
+  const el = $("loginMessage");
+  if (!el) return;
+  el.textContent = message;
+  el.style.color = good ? "#16835f" : "#d94b55";
 }
 
-function cache() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
-  } catch (e) {
-    console.error("Local save error", e);
-    toast("Local storage is full. Try a smaller driver photo.");
-  }
-}
-
-function normalizeDB(data) {
-  const result = data && typeof data === "object"
-    ? data
-    : { rate: 0.52, drivers: [] };
-
-  result.rate = Number(result.rate ?? 0.52);
-  result.drivers = Array.isArray(result.drivers) ? result.drivers : [];
-  result.history = Array.isArray(result.history) ? result.history : [];
-  result.settings = {
-    ...defaultSettings,
-    ...(result.settings || {})
-  };
-
-  result.drivers.forEach(d => {
-    d.months = d.months || {};
-    d.photo = d.photo || "";
-    d.phone = d.phone || "";
-    d.address = d.address || "";
-    d.notes = d.notes || "";
-
-    Object.values(d.months).forEach(m => {
-      m.rows ||= [];
-      m.adds ||= [];
-      m.fines ||= [];
-      m.advances ||= [];
-      m.recoveries ||= [];
-      m.payments ||= [];
-    });
-  });
-
-  return result;
-}
-
-function scheduleSave() {
-  cache();
-  if (!user || !sb) return;
-
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(saveCloud, 700);
-}
-
-async function saveCloud() {
-  if (!user || !sb) return;
-
-  const { error } = await sb
-    .from("driver_salary_data")
-    .upsert({
-      user_id: user.id,
-      payload: db,
-      updated_at: new Date().toISOString()
-    }, {
-      onConflict: "user_id"
-    });
-
-  if (error) {
-    console.error(error);
-    toast("Cloud save failed: " + error.message);
-  }
-}
-
-async function loadCloud() {
-  const { data, error } = await sb
-    .from("driver_salary_data")
-    .select("payload")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (error) throw error;
-
-  if (data?.payload) {
-    db = normalizeDB(data.payload);
-  } else {
-    db = normalizeDB({
-      rate: 0.52,
-      drivers: [],
-      history: [],
-      settings: defaultSettings
-    });
-    await saveCloud();
-  }
-
-  cache();
-  activeId = db.drivers[0]?.id || null;
-
-  $("monthPicker").value = currentMonth;
-  $("loginScreen").classList.add("hidden");
-  $("userLabel").textContent = db.settings.manager || user.email || "Account";
-
-  render();
-}
-
-function driver() {
-  return db.drivers.find(d => d.id === activeId);
-}
-
-function monthData(d, month = currentMonth) {
-  d.months ||= {};
-
-  d.months[month] ||= {
-    rows: [],
-    adds: [],
-    fines: [],
-    advances: [],
-    recoveries: [],
-    payments: []
-  };
-
-  const m = d.months[month];
-
-  m.rows ||= [];
-  m.adds ||= [];
-  m.fines ||= [];
-  m.advances ||= [];
-  m.recoveries ||= [];
-  m.payments ||= [];
-
+function normalizeMonth(m) {
+  if (!m || typeof m !== "object") m = {};
+  m.rows = Array.isArray(m.rows) ? m.rows : [];
+  m.adds = Array.isArray(m.adds) ? m.adds : [];
+  m.fines = Array.isArray(m.fines) ? m.fines : [];
+  m.advances = Array.isArray(m.advances) ? m.advances : [];
+  m.recoveries = Array.isArray(m.recoveries) ? m.recoveries : [];
+  m.payments = Array.isArray(m.payments) ? m.payments : [];
   return m;
 }
 
-function allMonths(d) {
-  return Object.keys(d.months || {})
-    .sort()
-    .map(key => ({ key, data: d.months[key] }));
+function normalizeData(payload) {
+  const old = payload && typeof payload === "object" ? payload : {};
+  db.rate = number(old.rate) || DEFAULT_RATE;
+  db.drivers = Array.isArray(old.drivers) ? old.drivers : [];
+  db.history = Array.isArray(old.history) ? old.history : [];
+  db.deletedRecords = Array.isArray(old.deletedRecords) ? old.deletedRecords : [];
+
+  const oldSettings = old.settings || {};
+  db.settings = {
+    ...db.settings,
+    ...oldSettings,
+    company: oldSettings.company || "PRESERVER TRANS LLC",
+    manager: oldSettings.manager || "Saim Ali",
+    username: oldSettings.username || oldSettings.manager || "Saim Ali",
+    theme: oldSettings.theme || "navy",
+    displayStyle: oldSettings.displayStyle || "modern",
+    fontSize: oldSettings.fontSize || "normal",
+    currency: oldSettings.currency || "$"
+  };
+
+  db.drivers.forEach(d => {
+    d.id = d.id || uid();
+    d.name = d.name || d.driverName || "Unnamed Driver";
+    d.truck = d.truck || d.truckNo || "";
+    d.phone = d.phone || "";
+    d.address = d.address || "";
+    d.notes = d.notes || "";
+    d.months = d.months || {};
+    Object.keys(d.months).forEach(k => {
+      d.months[k] = normalizeMonth(d.months[k]);
+    });
+  });
 }
 
-function mileageEntries(d) {
-  const entries = [];
+function monthFor(driver, month) {
+  if (!driver.months) driver.months = {};
+  if (!driver.months[month]) {
+    driver.months[month] = normalizeMonth({});
+  }
+  return normalizeMonth(driver.months[month]);
+}
 
-  allMonths(d).forEach(({ key, data }) => {
-    (data.rows || []).forEach(r => {
-      entries.push({
-        ...r,
-        monthKey: key
+function getSelectedDriver() {
+  return db.drivers.find(d => d.id === $("salaryDriver").value) || null;
+}
+
+function getSelectedMonth() {
+  return $("salaryMonth").value || currentMonth();
+}
+
+function monthFigures(m) {
+  m = normalizeMonth(m);
+  let miles = 0;
+  let mileagePay = 0;
+
+  m.rows.forEach(r => {
+    const rowMiles = Math.max(0, number(r.next) - number(r.prev));
+    const rate = number(r.rate);
+    miles += rowMiles;
+    mileagePay += rowMiles * rate;
+  });
+
+  const additions = m.adds.reduce((s, x) => s + number(x.amount), 0);
+  const fines = m.fines.reduce((s, x) => s + number(x.amount), 0);
+  const advances = m.advances.reduce((s, x) => s + number(x.amount), 0);
+  const recoveries = m.recoveries.reduce((s, x) => s + number(x.amount), 0);
+  const paid = m.payments.reduce((s, x) => s + number(x.amount), 0);
+
+  const net = mileagePay + additions - fines - advances - recoveries;
+  return {
+    miles, mileagePay, additions, fines, advances, recoveries,
+    net, paid, remaining: net - paid
+  };
+}
+
+function monthName(month) {
+  if (!month) return "";
+  const d = new Date(month + "-01T12:00:00");
+  return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+}
+
+function allMonthRecords() {
+  const result = [];
+  db.drivers.forEach(driver => {
+    Object.keys(driver.months || {}).forEach(month => {
+      const m = normalizeMonth(driver.months[month]);
+      const f = monthFigures(m);
+      result.push({
+        driverId: driver.id,
+        driverName: driver.name,
+        truck: driver.truck,
+        month,
+        data: JSON.parse(JSON.stringify(m)),
+        figures: f
       });
     });
   });
-
-  return entries.sort((a, b) =>
-    String(a.date || a.monthKey).localeCompare(String(b.date || b.monthKey))
-  );
+  return result.sort((a,b) => b.month.localeCompare(a.month));
 }
 
-function lastMilesFor(d) {
-  const entries = mileageEntries(d);
-  if (!entries.length) return 0;
+function applyTheme() {
+  document.body.className = "";
+  document.body.classList.add("theme-" + (db.settings.theme || "navy"));
+  document.body.classList.add("style-" + (db.settings.displayStyle || "modern"));
+  document.body.classList.add("font-" + (db.settings.fontSize || "normal"));
 
-  const latest = entries[entries.length - 1];
-  return Number(latest.next) || 0;
-}
-
-function monthFigures(d, month) {
-  const m = monthData(d, month);
-
-  let miles = 0;
-  let mileagePay = 0;
-  let prev = 0;
-  let next = 0;
-
-  m.rows.forEach(r => {
-    const difference = Math.max(
-      0,
-      (Number(r.next) || 0) - (Number(r.prev) || 0)
-    );
-
-    prev += Number(r.prev) || 0;
-    next += Number(r.next) || 0;
-    miles += difference;
-    mileagePay += difference * (Number(r.rate) || 0);
+  document.querySelectorAll(".theme-choice").forEach(btn => {
+    btn.classList.toggle("selected", btn.dataset.theme === db.settings.theme);
   });
-
-  const additions = m.adds.reduce(
-    (s, r) => s + (Number(r.amount) || 0), 0
-  );
-
-  const fines = m.fines.reduce(
-    (s, r) => s + (Number(r.amount) || 0), 0
-  );
-
-  const advances = m.advances.reduce(
-    (s, r) => s + (Number(r.amount) || 0), 0
-  );
-
-  const recoveries = m.recoveries.reduce(
-    (s, r) => s + (Number(r.amount) || 0), 0
-  );
-
-  const paid = m.payments.reduce(
-    (s, r) => s + (Number(r.amount) || 0), 0
-  );
-
-  const gross = mileagePay + additions - fines - recoveries;
-
-  return {
-    prev,
-    next,
-    miles,
-    mileagePay,
-    additions,
-    fines,
-    advances,
-    recoveries,
-    paid,
-    gross,
-    balance: gross - paid
-  };
 }
 
-function driverFigures(d) {
-  let earned = 0;
-  let paid = 0;
-  let miles = 0;
-
-  allMonths(d).forEach(({ key }) => {
-    const f = monthFigures(d, key);
-    earned += f.gross;
-    paid += f.paid;
-    miles += f.miles;
-  });
-
-  return {
-    earned,
-    paid,
-    miles,
-    balance: Math.max(0, earned - paid)
-  };
+function cacheSave() {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(db));
+  } catch (e) {
+    console.warn("Local cache is full:", e);
+    toast("Storage is full. Please reduce photo size.");
+  }
 }
 
-function previousDues(d) {
-  let total = 0;
+async function saveData(showMessage = false) {
+  cacheSave();
 
-  allMonths(d).forEach(({ key }) => {
-    if (key < currentMonth) {
-      total += monthFigures(d, key).balance;
+  if (!sb || !user) {
+    if (showMessage) toast("Saved on this device. Sign in to sync online.");
+    return;
+  }
+
+  $("saveStatus").textContent = "Saving to cloud...";
+  const { error } = await sb.from("driver_salary_data").upsert({
+    user_id: user.id,
+    payload: db,
+    updated_at: new Date().toISOString()
+  }, { onConflict: "user_id" });
+
+  if (error) {
+    console.error(error);
+    $("saveStatus").textContent = "Cloud save failed: " + error.message;
+    toast("Cloud save failed. Check Supabase table and policies.");
+  } else {
+    $("saveStatus").textContent = "Saved successfully.";
+    if (showMessage) toast("All changes saved successfully.");
+  }
+}
+
+function scheduleSave() {
+  cacheSave();
+  $("saveStatus").textContent = "Changes pending...";
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => saveData(false), 700);
+}
+
+async function loadData() {
+  const cached = localStorage.getItem(CACHE_KEY);
+  if (cached) {
+    try { normalizeData(JSON.parse(cached)); } catch (e) { console.error(e); }
+  }
+
+  if (sb && user) {
+    const { data, error } = await sb
+      .from("driver_salary_data")
+      .select("payload")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.error(error);
+      toast("Could not load cloud data: " + error.message);
+    } else if (data && data.payload) {
+      normalizeData(data.payload);
+      cacheSave();
+    } else {
+      await saveData(false);
     }
+  }
+}
+
+function showApp() {
+  $("loginScreen").classList.add("hidden");
+  $("app").classList.remove("hidden");
+  $("settingEmail").value = user?.email || "";
+  applyTheme();
+  fillSettings();
+  renderAll();
+  showView("salaryView");
+}
+
+function showView(viewId) {
+  document.querySelectorAll(".view").forEach(v => v.classList.remove("active-view"));
+  const view = $(viewId);
+  if (view) view.classList.add("active-view");
+
+  document.querySelectorAll(".nav-btn[data-view]").forEach(b => {
+    b.classList.toggle("active", b.dataset.view === viewId);
   });
 
-  return Math.max(0, total);
+  const names = {
+    salaryView:"Salary Sheets",
+    historyView:"Salary History",
+    statementView:"Salary Statement",
+    duesView:"Outstanding Dues",
+    paymentsView:"Payment History",
+    deletedView:"Deleted Records",
+    driversView:"Drivers",
+    settingsView:"Settings"
+  };
+  $("pageTitle").textContent = names[viewId] || "Dashboard";
+  $("sidebar").classList.remove("open");
 }
 
-function renderTabs() {
-  const wrap = $("driverTabs");
-  wrap.innerHTML = "";
-
-  db.drivers.forEach(d => {
-    const button = document.createElement("button");
-    button.className = "driver-tab" + (d.id === activeId ? " active" : "");
-    button.textContent = d.name || "Unnamed Driver";
-
-    button.onclick = () => {
-      activeId = d.id;
-      render();
-    };
-
-    wrap.append(button);
-  });
+function renderAll() {
+  renderDriverSelect();
+  renderSalary();
+  renderHistory();
+  renderDues();
+  renderPayments();
+  renderDeleted();
+  renderDrivers();
+  updateBranding();
 }
 
-function render() {
-  renderTabs();
-
-  const d = driver();
-  const empty = !d;
-
-  $("emptyState").classList.toggle("hidden", !empty);
-  $("sheetArea").classList.toggle("hidden", empty);
-
-  if (!d) return;
-
-  const m = monthData(d);
-  const f = monthFigures(d, currentMonth);
-  const total = driverFigures(d);
-  const dues = previousDues(d);
-
-  const [year, month] = currentMonth.split("-");
-  const monthName = new Date(
-    Number(year),
-    Number(month) - 1,
-    1
-  ).toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric"
-  });
-
-  $("sheetDriverName").textContent = d.name;
-  $("sheetPeriod").textContent = monthName + " Salary Statement";
-
-  $("driverName").value = d.name || "";
-  $("truckNumber").value = d.truck || "";
-  $("driverPhone").value = d.phone || "";
-  $("driverAddress").value = d.address || "";
-  $("driverNotes").value = d.notes || "";
-
-  $("lastMiles").textContent = num(lastMilesFor(d));
-  $("currentMiles").textContent = num(f.miles);
-  $("previousDues").textContent = money(dues);
-  $("driverOutstanding").textContent = money(total.balance);
-  $("dueBoxBalance").textContent = money(total.balance);
-
-  const photo = d.photo || "";
-  $("profilePreview").src = photo || defaultPhoto();
-  $("profileLarge").src = photo || defaultPhoto();
-
-  renderMileage(m);
-  renderMoneyRows(m, "adds", "additionRows", db.settings.addition);
-  renderMoneyRows(m, "fines", "fineRows", db.settings.fine);
-  renderMoneyRows(m, "advances", "advanceRows", db.settings.advance);
-  renderMoneyRows(m, "recoveries", "recoveryRows", "Advance recovery");
-
-  $("totalPrev").textContent = num(f.prev);
-  $("totalNew").textContent = num(f.next);
-  $("totalMiles").textContent = num(f.miles);
-
-  $("mileageTotal").textContent = money(f.mileagePay);
-  $("additionTotal").textContent = money(f.additions);
-  $("fineTotal").textContent = money(f.fines);
-  $("advanceTotal").textContent = money(f.advances);
-  $("recoveryTotal").textContent = money(f.recoveries);
-  $("finalSalary").textContent = money(f.gross);
-
-  $("footerCompany").textContent =
-    db.settings.company + " · " + db.settings.location;
+function updateBranding() {
+  const name = db.settings.username || db.settings.manager || "Account Manager";
+  $("topCompany").textContent = db.settings.company || "PRESERVER TRANS LLC";
+  $("topUsername").textContent = name;
+  $("sideManagerName").textContent = name;
+  $("sideAvatar").textContent = name.split(/\s+/).map(x => x[0]).join("").slice(0,2).toUpperCase() || "AM";
+  $("deletedCount").textContent = db.deletedRecords.length;
 }
 
-function defaultPhoto() {
-  return "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120">
-      <rect width="100%" height="100%" fill="#e8edf4"/>
-      <circle cx="60" cy="43" r="22" fill="#aab7c8"/>
-      <path d="M18 115c3-28 19-42 42-42s39 14 42 42" fill="#aab7c8"/>
-    </svg>`
-  );
+function renderDriverSelect() {
+  const select = $("salaryDriver");
+  const old = select.value;
+  select.innerHTML = db.drivers.length
+    ? db.drivers.map(d => `<option value="${esc(d.id)}">${esc(d.name)}${d.truck ? " · " + esc(d.truck) : ""}</option>`).join("")
+    : `<option value="">No drivers added</option>`;
+
+  if (db.drivers.some(d => d.id === old)) select.value = old;
+  if (!select.value && db.drivers.length) select.value = db.drivers[0].id;
 }
 
-function renderMileage(m) {
-  const body = $("mileageRows");
-  body.innerHTML = "";
+function renderSalary() {
+  const driver = getSelectedDriver();
+  const month = getSelectedMonth();
+  const body = $("mileageBody");
 
-  if (!m.rows.length) {
-    body.innerHTML = `
-      <tr><td colspan="7" class="empty-cell">
-        No mileage entries. Click Add Mileage to start.
-      </td></tr>`;
+  if (!driver) {
+    $("salaryDriverInfo").textContent = "Please add a driver to start a salary sheet.";
+    body.innerHTML = `<tr><td colspan="9" class="empty-row">No driver selected.</td></tr>`;
+    ["additionsBody","finesBody","advancesBody"].forEach(id => $(id).innerHTML = "");
+    $("salaryTotals").innerHTML = "";
+    $("paymentSummary").textContent = "";
+    updateStats({miles:0,mileagePay:0,net:0,remaining:0});
     return;
   }
 
-  m.rows.forEach(r => {
-    const tr = document.createElement("tr");
-    const diff = Math.max(
-      0,
-      (Number(r.next) || 0) - (Number(r.prev) || 0)
-    );
-    const amount = diff * (Number(r.rate) || 0);
+  const m = monthFor(driver, month);
+  const f = monthFigures(m);
+  $("salaryDriverInfo").innerHTML =
+    `<b>${esc(driver.name)}</b> &nbsp; | &nbsp; Truck: ${esc(driver.truck || "—")} &nbsp; | &nbsp; Phone: ${esc(driver.phone || "—")} &nbsp; | &nbsp; ${esc(monthName(month))}`;
 
-    tr.innerHTML = `
-      <td><input type="date" value="${esc(r.date || "")}" data-field="date"></td>
-      <td><input type="number" value="${r.prev ?? 0}" readonly></td>
-      <td><input type="number" min="0" step="0.1"
-        value="${r.next ?? ""}" placeholder="Enter new miles" data-field="next"></td>
-      <td><span class="calculated">${num(diff)}</span></td>
-      <td><input type="number" min="0" step="0.01"
-        value="${r.rate ?? db.rate}" data-field="rate"></td>
-      <td class="amount">${money(amount)}</td>
-      <td><button class="delete-row" title="Delete row">×</button></td>
-    `;
+  body.innerHTML = m.rows.length ? m.rows.map((r,i) => {
+    const miles = Math.max(0, number(r.next) - number(r.prev));
+    const amount = miles * number(r.rate);
+    return `<tr>
+      <td>${i+1}</td>
+      <td><input type="date" data-row="${i}" data-field="date" value="${esc(r.date || "")}"></td>
+      <td><input type="text" data-row="${i}" data-field="note" value="${esc(r.note || "")}" placeholder="Load / notes"></td>
+      <td><input type="number" data-row="${i}" data-field="prev" value="${esc(r.prev ?? "")}"></td>
+      <td><input type="number" data-row="${i}" data-field="next" value="${esc(r.next ?? "")}"></td>
+      <td>${miles.toLocaleString()}</td>
+      <td>${money(r.rate)}</td>
+      <td><b>${money(amount)}</b></td>
+      <td><button class="btn danger small" data-delete-row="${i}">Delete</button></td>
+    </tr>`;
+  }).join("") : `<tr><td colspan="9" class="empty-row">No mileage records for this month.</td></tr>`;
 
-    tr.querySelectorAll("[data-field]").forEach(input => {
-      input.onchange = () => {
-        const field = input.dataset.field;
-        const value = input.value;
+  renderItems("additionsBody", m.adds, "adds");
+  renderItems("finesBody", m.fines, "fines");
+  renderItems("advancesBody", m.advances, "advances");
 
-        if (field === "date") {
-          r.date = value;
-        } else {
-          r[field] = value === "" ? "" : Number(value);
-        }
+  $("mileageRate").value = db.rate;
+  $("paymentDate").value = today();
+  $("paymentSummary").innerHTML =
+    `Total paid: <b>${money(f.paid)}</b><br>Remaining balance: <b>${money(f.remaining)}</b>`;
 
-        scheduleSave();
-        render();
-      };
-    });
-
-    tr.querySelector(".delete-row").onclick = () => {
-      if (!confirm("Delete this mileage row?")) return;
-      m.rows = m.rows.filter(x => x !== r);
-      scheduleSave();
-      render();
-    };
-
-    body.append(tr);
-  });
+  $("salaryTotals").innerHTML = `
+    <div class="totals-line"><span>Total Mileage Earnings</span><b>${money(f.mileagePay)}</b></div>
+    <div class="totals-line"><span>Additions / Extra Amounts</span><b>${money(f.additions)}</b></div>
+    <div class="totals-line"><span>Fines / Deductions</span><b>− ${money(f.fines)}</b></div>
+    <div class="totals-line"><span>Advance / Recovery</span><b>− ${money(f.advances + f.recoveries)}</b></div>
+    <div class="totals-line total"><span>Net Salary</span><b>${money(f.net)}</b></div>
+    <div class="totals-line"><span>Total Paid</span><b>${money(f.paid)}</b></div>
+    <div class="totals-line total"><span>Remaining Due</span><b>${money(f.remaining)}</b></div>
+  `;
+  updateStats(f);
 }
 
-function renderMoneyRows(m, key, container, placeholder) {
-  const el = $(container);
-  el.innerHTML = "";
-
-  m[key].forEach(r => {
-    const row = document.createElement("div");
-    row.className = "money-row";
-
-    row.innerHTML = `
-      <input value="${esc(r.desc || "")}" placeholder="${esc(placeholder)}">
-      <input type="number" min="0" step="0.01"
-        value="${r.amount ?? ""}" placeholder="0.00">
-      <button class="delete-row">×</button>
-    `;
-
-    const [description, amount] = row.querySelectorAll("input");
-
-    description.onchange = () => {
-      r.desc = description.value;
-      scheduleSave();
-    };
-
-    amount.onchange = () => {
-      r.amount = Number(amount.value) || 0;
-      scheduleSave();
-      render();
-    };
-
-    row.querySelector("button").onclick = () => {
-      m[key] = m[key].filter(x => x !== r);
-      scheduleSave();
-      render();
-    };
-
-    el.append(row);
-  });
+function updateStats(f) {
+  $("statMiles").textContent = number(f.miles).toLocaleString();
+  $("statMileage").textContent = money(f.mileagePay);
+  $("statNet").textContent = money(f.net);
+  $("statDue").textContent = money(f.remaining);
 }
 
-function addMoneyRow(key) {
-  const d = driver();
-  if (!d) return;
-
-  monthData(d)[key].push({
-    id: uid(),
-    date: new Date().toISOString().slice(0, 10),
-    desc: "",
-    amount: 0
-  });
-
-  scheduleSave();
-  render();
+function renderItems(elementId, items, key) {
+  $(elementId).innerHTML = items.length ? items.map((x,i) =>
+    `<tr><td>${esc(x.description || "")}</td><td>${money(x.amount)}</td><td><button class="btn danger small" data-item-group="${key}" data-item-index="${i}">Delete</button></td></tr>`
+  ).join("") : `<tr><td colspan="3" class="empty-row">No records.</td></tr>`;
 }
 
-function addMileage() {
-  const d = driver();
-  if (!d) return;
+function addMileageRow() {
+  const d = getSelectedDriver();
+  if (!d) return toast("Add a driver first.");
+  const m = monthFor(d, getSelectedMonth());
+  let previous = 0;
 
-  const previous = db.settings.autoMiles
-    ? lastMilesFor(d)
-    : 0;
-
-  monthData(d).rows.push({
-    id: uid(),
-    date: new Date().toISOString().slice(0, 10),
-    prev: previous,
-    next: "",
-    rate: db.rate
-  });
-
-  scheduleSave();
-  render();
-}
-
-function renderOutstanding() {
-  const body = $("outstandingRows");
-  body.innerHTML = "";
-
-  const drivers = db.drivers.filter(d => {
-    const balance = driverFigures(d).balance;
-    return db.settings.showZero || balance > 0;
-  });
-
-  if (!drivers.length) {
-    body.innerHTML = `<tr><td colspan="7">No outstanding balances.</td></tr>`;
-    return;
+  if (m.rows.length) {
+    previous = number(m.rows[m.rows.length - 1].next);
+  } else {
+    const priorMonths = Object.keys(d.months).filter(x => x < getSelectedMonth()).sort();
+    for (const month of priorMonths.reverse()) {
+      const rows = monthFor(d, month).rows;
+      if (rows.length) {
+        previous = number(rows[rows.length - 1].next);
+        break;
+      }
+    }
   }
 
-  drivers.forEach(d => {
-    const f = driverFigures(d);
-    const tr = document.createElement("tr");
+  m.rows.push({id:uid(),date:today(),note:"",prev:previous,next:previous,rate:number(db.rate)||DEFAULT_RATE});
+  scheduleSave();
+  renderSalary();
+}
 
-    tr.innerHTML = `
-      <td><strong>${esc(d.name)}</strong></td>
-      <td>${esc(d.truck || "")}</td>
-      <td>${num(lastMilesFor(d))}</td>
-      <td>${money(f.earned)}</td>
-      <td>${money(f.paid)}</td>
-      <td class="amount">${money(f.balance)}</td>
-      <td><button class="primary small">Open / Pay</button></td>
-    `;
-
-    tr.querySelector("button").onclick = () => {
-      activeId = d.id;
-      showView("salary");
-      render();
-      $("duePaymentAmount").focus();
-    };
-
-    body.append(tr);
-  });
+function addItem(group, title) {
+  const d = getSelectedDriver();
+  if (!d) return toast("Add a driver first.");
+  const description = prompt(title + " description:");
+  if (description === null) return;
+  const amountText = prompt("Enter amount:");
+  if (amountText === null) return;
+  const amount = Number(amountText);
+  if (!description.trim() || !Number.isFinite(amount) || amount < 0) {
+    return toast("Please enter a valid description and amount.");
+  }
+  monthFor(d, getSelectedMonth())[group].push({id:uid(),description:description.trim(),amount});
+  scheduleSave();
+  renderSalary();
 }
 
 function renderHistory() {
-  const body = $("historyRows");
-  body.innerHTML = "";
-
-  const history = [...db.history].sort((a, b) =>
-    String(b.date || "").localeCompare(String(a.date || ""))
+  const search = ($("historySearch")?.value || "").toLowerCase();
+  const records = allMonthRecords().filter(r =>
+    (r.driverName + " " + r.month + " " + r.truck).toLowerCase().includes(search)
   );
 
-  if (!history.length) {
-    body.innerHTML = `<tr><td colspan="10">No payments recorded yet.</td></tr>`;
-    return;
-  }
+  $("historyBody").innerHTML = records.length ? records.map((r,i) => `
+    <tr>
+      <td><b>${esc(r.driverName)}</b></td>
+      <td>${esc(r.truck || "—")}</td>
+      <td>${esc(monthName(r.month))}</td>
+      <td>${r.figures.miles.toLocaleString()}</td>
+      <td>${money(r.figures.net)}</td>
+      <td>${money(r.figures.paid)}</td>
+      <td>${money(r.figures.remaining)}</td>
+      <td><button class="btn outline small" data-open-statement="${esc(r.driverId)}" data-open-month="${esc(r.month)}">Open Sheet</button></td>
+    </tr>`).join("") : `<tr><td colspan="8" class="empty-row">No salary sheets found.</td></tr>`;
 
-  history.forEach(h => {
-    const tr = document.createElement("tr");
-
-    tr.innerHTML = `
-      <td>${esc(h.date || "")}</td>
-      <td>${esc(h.driverName || "")}</td>
-      <td>${esc(h.truck || "")}</td>
-      <td>${esc(h.month || "")}</td>
-      <td>${num(h.previousMiles)}</td>
-      <td>${num(h.newMiles)}</td>
-      <td>${money(h.monthSalary)}</td>
-      <td class="amount">${money(h.payment)}</td>
-      <td>${money(h.remaining)}</td>
-      <td><strong class="paid-label">PAID</strong></td>
-    `;
-
-    body.append(tr);
-  });
+  const payments = [];
+  db.drivers.forEach(d => Object.entries(d.months || {}).forEach(([month,m]) => {
+    normalizeMonth(m).payments.forEach(p => payments.push({driver:d.name,month,...p}));
+  }));
+  $("historyPaymentsBody").innerHTML = payments.length ? payments.sort((a,b) => (b.date||"").localeCompare(a.date||"")).map(p =>
+    `<tr><td>${esc(p.date || "")}</td><td>${esc(p.driver)}</td><td>${esc(monthName(p.month))}</td><td>${money(p.amount)}</td><td>${esc(p.note || "")}</td></tr>`
+  ).join("") : `<tr><td colspan="5" class="empty-row">No payment transactions yet.</td></tr>`;
 }
 
-function showView(view) {
-  const views = {
-    salary: "salaryView",
-    outstanding: "outstandingView",
-    history: "historyView",
-    settings: "settingsView"
+function makeStatementSnapshot(driver, month) {
+  const m = JSON.parse(JSON.stringify(monthFor(driver, month)));
+  return {
+    driverId:driver.id,
+    driverName:driver.name,
+    truck:driver.truck || "",
+    phone:driver.phone || "",
+    address:driver.address || "",
+    month,
+    data:m,
+    figures:monthFigures(m),
+    company:db.settings.company,
+    location:db.settings.location,
+    createdAt:new Date().toISOString()
   };
-
-  Object.values(views).forEach(id => $(id).classList.add("hidden"));
-  Object.values({
-    salary: "navSalary",
-    outstanding: "navOutstanding",
-    history: "navHistory",
-    settings: "navSettings"
-  }).forEach(id => $(id).classList.remove("active"));
-
-  $(views[view]).classList.remove("hidden");
-
-  const nav = {
-    salary: "navSalary",
-    outstanding: "navOutstanding",
-    history: "navHistory",
-    settings: "navSettings"
-  };
-
-  $(nav[view]).classList.add("active");
-
-  if (view === "outstanding") renderOutstanding();
-  if (view === "history") renderHistory();
-  if (view === "salary") render();
-  if (view === "settings") loadSettingsForm();
 }
 
-function payDue() {
-  const d = driver();
-  if (!d) return;
+function openStatement(driverId, month) {
+  const driver = db.drivers.find(d => d.id === driverId);
+  if (!driver || !driver.months[month]) return toast("This salary sheet is not available.");
 
-  const amount = Number($("duePaymentAmount").value);
-  const balance = driverFigures(d).balance;
+  currentStatement = makeStatementSnapshot(driver, month);
+  renderStatement(currentStatement);
+  showView("statementView");
+}
 
-  if (!Number.isFinite(amount) || amount <= 0) {
-    toast("Enter a valid payment amount.");
-    return;
-  }
+function renderStatement(s) {
+  $("statementSubtitle").textContent = `${s.driverName} · ${monthName(s.month)} · Read-only statement`;
+  const m = normalizeMonth(s.data);
+  const f = s.figures || monthFigures(m);
 
-  if (amount > balance + 0.001) {
-    toast("Payment cannot be greater than outstanding balance.");
-    return;
-  }
+  const rows = m.rows.map((r,i) => {
+    const miles = Math.max(0,number(r.next)-number(r.prev));
+    return `<tr><td>${i+1}</td><td>${esc(r.date || "")}</td><td>${esc(r.note || "")}</td><td>${number(r.prev).toLocaleString()}</td><td>${number(r.next).toLocaleString()}</td><td>${miles.toLocaleString()}</td><td>${money(r.rate)}</td><td>${money(miles*number(r.rate))}</td></tr>`;
+  }).join("");
 
-  if (db.settings.confirmPay) {
-    if (!confirm("Confirm payment of " + money(amount) + " for " + d.name + "?")) {
-      return;
-    }
-  }
+  const itemTable = (title,items) => `
+    <div class="statement-section"><h3>${title}</h3>
+    <table><thead><tr><th>Description</th><th>Amount</th></tr></thead>
+    <tbody>${items.length ? items.map(x => `<tr><td>${esc(x.description || "")}</td><td>${money(x.amount)}</td></tr>`).join("") : `<tr><td colspan="2">None</td></tr>`}</tbody></table></div>`;
 
-  const m = monthData(d);
-  const f = monthFigures(d, currentMonth);
-  const date = new Date().toISOString().slice(0, 10);
-  const note = $("duePaymentNote").value.trim() ||
-    db.settings.paymentMethod;
+  const paymentRows = m.payments.map(p =>
+    `<tr><td>${esc(p.date || "")}</td><td>${esc(p.note || "")}</td><td>${money(p.amount)}</td></tr>`
+  ).join("");
 
-  m.payments.push({
-    id: uid(),
-    date,
-    desc: note,
-    amount,
-    status: "Paid"
-  });
+  $("statementContent").innerHTML = `
+    <div class="statement-header"><h2>${esc(s.company || db.settings.company)}</h2><p>${esc(s.location || db.settings.location || "")}</p><p>DRIVER MONTHLY SALARY STATEMENT</p></div>
+    <div class="statement-meta">
+      <div><b>DRIVER NAME</b>${esc(s.driverName)}</div>
+      <div><b>TRUCK NUMBER</b>${esc(s.truck || "—")}</div>
+      <div><b>SALARY MONTH</b>${esc(monthName(s.month))}</div>
+      <div><b>PHONE</b>${esc(s.phone || "—")}</div>
+      <div><b>ADDRESS</b>${esc(s.address || "—")}</div>
+      <div><b>TOTAL MILES</b>${number(f.miles).toLocaleString()}</div>
+    </div>
+    <div class="statement-section"><h3>Mileage Details</h3>
+      <table><thead><tr><th>#</th><th>Date</th><th>Load / Notes</th><th>Previous</th><th>Ending</th><th>Miles</th><th>Rate</th><th>Amount</th></tr></thead>
+      <tbody>${rows || `<tr><td colspan="8">No mileage records.</td></tr>`}</tbody></table>
+    </div>
+    ${itemTable("Additions / Extra Amounts",m.adds)}
+    ${itemTable("Fines / Deductions",m.fines)}
+    ${itemTable("Advance / Recovery",m.advances.concat(m.recoveries))}
+    <div class="statement-section"><h3>Payment Details</h3>
+      <table><thead><tr><th>Date</th><th>Note / Method</th><th>Amount</th></tr></thead><tbody>${paymentRows || `<tr><td colspan="3">No payments.</td></tr>`}</tbody></table>
+    </div>
+    <div class="statement-total">
+      <div><span>Mileage Earnings</span><b>${money(f.mileagePay)}</b></div>
+      <div><span>Additions</span><b>${money(f.additions)}</b></div>
+      <div><span>Fines</span><b>− ${money(f.fines)}</b></div>
+      <div><span>Advance / Recovery</span><b>− ${money(f.advances+f.recoveries)}</b></div>
+      <div><span>Net Salary</span><b>${money(f.net)}</b></div>
+      <div><span>Total Paid</span><b>${money(f.paid)}</b></div>
+      <div><strong>Remaining Due</strong><strong>${money(f.remaining)}</strong></div>
+    </div>
+    <p style="text-align:center;margin-top:25px">Generated by Preserver Trans LLC Salary Management</p>
+  `;
+}
 
-  const newBalance = Math.max(0, balance - amount);
+function deleteCurrentStatement() {
+  if (!currentStatement) return;
+  if (!confirm(`Move ${currentStatement.driverName} - ${monthName(currentStatement.month)} to Deleted Records?`)) return;
 
-  // Save a salary-sheet snapshot with every payment.
-  db.history.push({
-    id: uid(),
-    date,
-    driverId: d.id,
-    driverName: d.name,
-    truck: d.truck || "",
-    month: currentMonth,
-    previousMiles: f.prev,
-    newMiles: f.next,
-    monthMiles: f.miles,
-    monthSalary: f.gross,
-    payment: amount,
-    remaining: newBalance,
-    note,
-    status: "Paid"
-  });
+  const driver = db.drivers.find(d => d.id === currentStatement.driverId);
+  if (!driver || !driver.months[currentStatement.month]) return toast("Record no longer exists.");
 
-  $("duePaymentAmount").value = "";
-  $("duePaymentNote").value = "";
+  const snapshot = makeStatementSnapshot(driver, currentStatement.month);
+  snapshot.deletedId = uid();
+  snapshot.deletedAt = new Date().toISOString();
+  db.deletedRecords.push(snapshot);
 
+  delete driver.months[currentStatement.month];
   scheduleSave();
-  render();
-  renderOutstanding();
-  renderHistory();
-
-  toast("Payment saved. Updated balance: " + money(newBalance));
+  currentStatement = null;
+  renderAll();
+  showView("historyView");
+  toast("Salary sheet moved to Deleted Records.");
 }
 
-function loadSettingsForm() {
+function renderDeleted() {
+  $("deletedCount").textContent = db.deletedRecords.length;
+  $("deletedBody").innerHTML = db.deletedRecords.length ? db.deletedRecords.map(r => `
+    <tr>
+      <td>${esc(r.driverName)}</td><td>${esc(r.truck || "—")}</td>
+      <td>${esc(monthName(r.month))}</td>
+      <td>${esc((r.deletedAt || "").slice(0,10))}</td>
+      <td>${money(r.figures?.net)}</td>
+      <td>
+        <button class="btn outline small" data-restore="${esc(r.deletedId)}">Restore</button>
+        <button class="btn danger small" data-permanent="${esc(r.deletedId)}">Permanent Delete</button>
+      </td>
+    </tr>`).join("") : `<tr><td colspan="6" class="empty-row">Deleted Records is empty.</td></tr>`;
+}
+
+function restoreRecord(id) {
+  const index = db.deletedRecords.findIndex(r => r.deletedId === id);
+  if (index < 0) return;
+  const record = db.deletedRecords[index];
+  const driver = db.drivers.find(d => d.id === record.driverId);
+
+  if (!driver) return toast("Original driver profile was not found. Restore is unavailable.");
+  if (driver.months[record.month]) {
+    return toast("A salary sheet for this driver and month already exists. Rename or remove that month first.");
+  }
+
+  driver.months[record.month] = normalizeMonth(JSON.parse(JSON.stringify(record.data)));
+  db.deletedRecords.splice(index,1);
+  scheduleSave();
+  renderAll();
+  toast("Salary sheet restored.");
+}
+
+async function verifyPassword(password) {
+  if (!user || !user.email || !password) return false;
+  const { error } = await sb.auth.signInWithPassword({
+    email:user.email,
+    password
+  });
+  if (error) {
+    toast("Password verification failed. Please check your password.");
+    return false;
+  }
+  const { data } = await sb.auth.getUser();
+  if (data?.user) user = data.user;
+  return true;
+}
+
+async function permanentDelete(id) {
+  const record = db.deletedRecords.find(r => r.deletedId === id);
+  if (!record) return;
+  if (!confirm(`PERMANENTLY DELETE ${record.driverName} - ${monthName(record.month)}? This cannot be undone.`)) return;
+
+  const password = prompt("Enter your current login password to permanently delete this record:");
+  if (password === null) return;
+  if (!(await verifyPassword(password))) return;
+
+  db.deletedRecords = db.deletedRecords.filter(r => r.deletedId !== id);
+  await saveData(true);
+  renderDeleted();
+  toast("Record permanently deleted.");
+}
+
+function renderDues() {
+  const totals = db.drivers.map(d => {
+    let salary = 0, paid = 0, months = 0;
+    Object.values(d.months || {}).forEach(m => {
+      const f = monthFigures(m);
+      salary += f.net;
+      paid += f.paid;
+      if (f.remaining > 0.009) months++;
+    });
+    return {d,salary,paid,due:salary-paid,months};
+  }).filter(x => x.due > 0.009);
+
+  $("duesBody").innerHTML = totals.length ? totals.map(x => `
+    <tr><td>${esc(x.d.name)}</td><td>${esc(x.d.truck || "—")}</td><td>${x.months}</td><td>${money(x.salary)}</td><td>${money(x.paid)}</td><td><b>${money(x.due)}</b></td></tr>
+  `).join("") : `<tr><td colspan="6" class="empty-row">No outstanding dues.</td></tr>`;
+}
+
+function renderPayments() {
+  const rows = [];
+  db.drivers.forEach(d => Object.entries(d.months || {}).forEach(([month,m]) => {
+    normalizeMonth(m).payments.forEach(p => rows.push({
+      date:p.date || "", driver:d.name, truck:d.truck, month, amount:p.amount, note:p.note
+    }));
+  }));
+  rows.sort((a,b) => b.date.localeCompare(a.date));
+  $("paymentsBody").innerHTML = rows.length ? rows.map(p =>
+    `<tr><td>${esc(p.date)}</td><td>${esc(p.driver)}</td><td>${esc(p.truck || "—")}</td><td>${esc(monthName(p.month))}</td><td>${money(p.amount)}</td><td>${esc(p.note || "")}</td></tr>`
+  ).join("") : `<tr><td colspan="6" class="empty-row">No payments recorded.</td></tr>`;
+}
+
+function renderDrivers() {
+  $("driversBody").innerHTML = db.drivers.length ? db.drivers.map(d =>
+    `<tr><td><b>${esc(d.name)}</b></td><td>${esc(d.truck || "")}</td><td>${esc(d.phone || "")}</td><td>${esc(d.address || "")}</td><td>${esc(d.notes || "")}</td></tr>`
+  ).join("") : `<tr><td colspan="5" class="empty-row">No drivers added yet.</td></tr>`;
+}
+
+function addDriver() {
+  const name = $("newDriverName").value.trim();
+  if (!name) return toast("Driver name is required.");
+  const driver = {
+    id:uid(),
+    name,
+    truck:$("newDriverTruck").value.trim(),
+    phone:$("newDriverPhone").value.trim(),
+    address:$("newDriverAddress").value.trim(),
+    notes:$("newDriverNotes").value.trim(),
+    photo:"",
+    months:{}
+  };
+  db.drivers.push(driver);
+  $("driverModal").classList.add("hidden");
+  ["newDriverName","newDriverTruck","newDriverPhone","newDriverAddress","newDriverNotes"].forEach(id => $(id).value = "");
+  renderAll();
+  $("salaryDriver").value = driver.id;
+  renderSalary();
+  scheduleSave();
+  toast("Driver profile added.");
+}
+
+function recordPayment() {
+  const driver = getSelectedDriver();
+  if (!driver) return toast("Select a driver first.");
+  const amount = Number($("paymentAmount").value);
+  const date = $("paymentDate").value || today();
+  const note = $("paymentNote").value.trim();
+
+  if (!Number.isFinite(amount) || amount <= 0) return toast("Enter a valid payment amount.");
+
+  const m = monthFor(driver,getSelectedMonth());
+  const f = monthFigures(m);
+  if (amount > Math.max(0,f.remaining) && !confirm("This payment is more than the remaining salary. Record it anyway?")) return;
+
+  m.payments.push({id:uid(),amount,date,note});
+  $("paymentAmount").value = "";
+  $("paymentNote").value = "";
+  scheduleSave();
+  renderAll();
+  toast("Payment recorded.");
+}
+
+function fillSettings() {
   const s = db.settings;
-
-  $("settingCompany").value = s.company;
-  $("settingManager").value = s.manager;
-  $("settingLocation").value = s.location;
-  $("defaultRate").value = db.rate;
-  $("settingCurrency").value = s.currency;
-  $("settingDecimals").value = String(s.decimals);
-  $("settingPaymentMethod").value = s.paymentMethod;
-  $("settingAddition").value = s.addition;
-  $("settingFine").value = s.fine;
-  $("settingAdvance").value = s.advance;
-  $("settingAutoMiles").checked = !!s.autoMiles;
-  $("settingConfirmPay").checked = !!s.confirmPay;
-  $("settingShowZero").checked = !!s.showZero;
+  $("settingUsername").value = s.username || s.manager || "";
+  $("settingEmail").value = user?.email || "";
+  $("settingCompany").value = s.company || "";
+  $("settingLocation").value = s.location || "";
+  $("settingRate").value = db.rate;
+  $("settingCurrency").value = s.currency || "$";
+  $("displayStyle").value = s.displayStyle || "modern";
+  $("fontSize").value = s.fontSize || "normal";
+  $("managerName").value = s.manager || "";
+  $("managerDesignation").value = s.designation || "Account Manager";
+  $("managerPhone").value = s.phone || "";
+  $("managerDetails").value = s.details || "";
+  $("managerPhotoPreview").style.backgroundImage = s.managerPhoto ? `url("${s.managerPhoto}")` : "";
+  $("managerPhotoPreview").textContent = s.managerPhoto ? "" : (s.manager || "SA").split(/\s+/).map(x=>x[0]).join("").slice(0,2).toUpperCase();
+  applyTheme();
 }
 
-function saveSettings() {
-  const rate = Number($("defaultRate").value);
-
-  if (!Number.isFinite(rate) || rate < 0) {
-    toast("Enter a valid mileage rate.");
-    return;
-  }
-
-  db.rate = rate;
-
-  db.settings = {
-    company: $("settingCompany").value.trim() || "Preserver Trans LLC",
-    manager: $("settingManager").value.trim() || "Saim Ali",
-    location: $("settingLocation").value.trim() || "USA California",
-    currency: $("settingCurrency").value,
-    decimals: Number($("settingDecimals").value),
-    paymentMethod: $("settingPaymentMethod").value,
-    addition: $("settingAddition").value.trim() || "Extra payment",
-    fine: $("settingFine").value.trim() || "Fine",
-    advance: $("settingAdvance").value.trim() || "Driver advance",
-    autoMiles: $("settingAutoMiles").checked,
-    confirmPay: $("settingConfirmPay").checked,
-    showZero: $("settingShowZero").checked
-  };
-
-  $("companyHeading").textContent = db.settings.company + " Payroll";
-  $("userLabel").textContent = db.settings.manager;
-
+async function saveUsername() {
+  const name = $("settingUsername").value.trim();
+  if (!name) return toast("Enter a display username.");
+  db.settings.username = name;
   scheduleSave();
-  render();
-  toast("All settings saved.");
+  updateBranding();
+  toast("Display username updated.");
 }
 
-function updateDriverField(field, value) {
-  const d = driver();
-  if (!d) return;
+async function changePassword() {
+  const current = $("currentPassword").value;
+  const next = $("newPassword").value;
+  const confirmNext = $("confirmPassword").value;
+  if (!current || !next) return toast("Fill in all password fields.");
+  if (next.length < 6) return toast("New password must be at least 6 characters.");
+  if (next !== confirmNext) return toast("New passwords do not match.");
+  if (!(await verifyPassword(current))) return;
 
-  d[field] = value;
-  scheduleSave();
+  const { error } = await sb.auth.updateUser({password:next});
+  if (error) return toast("Password update failed: " + error.message);
 
-  if (field === "name") {
-    $("sheetDriverName").textContent = value;
-    renderTabs();
-  }
+  $("currentPassword").value = "";
+  $("newPassword").value = "";
+  $("confirmPassword").value = "";
+  toast("Login password changed successfully.");
 }
 
-function resizePhoto(file) {
-  return new Promise((resolve, reject) => {
+async function saveManagerProfile() {
+  const password = $("managerVerifyPassword").value;
+  if (!password) return toast("Enter your current login password.");
+  if (!(await verifyPassword(password))) return;
+
+  db.settings.manager = $("managerName").value.trim() || "Saim Ali";
+  db.settings.designation = $("managerDesignation").value.trim();
+  db.settings.phone = $("managerPhone").value.trim();
+  db.settings.details = $("managerDetails").value.trim();
+  if (managerPhotoData) db.settings.managerPhoto = managerPhotoData;
+
+  $("managerVerifyPassword").value = "";
+  managerPhotoData = "";
+  fillSettings();
+  updateBranding();
+  await saveData(true);
+  toast("Manager profile updated.");
+}
+
+async function compressPhoto(file) {
+  return new Promise((resolve,reject) => {
     const reader = new FileReader();
-
-    reader.onerror = reject;
-
     reader.onload = () => {
       const img = new Image();
-
-      img.onerror = reject;
-
       img.onload = () => {
-        const canvas = document.createElement("canvas");
         const max = 360;
-        const scale = Math.min(1, max / Math.max(img.width, img.height));
-
-        canvas.width = Math.round(img.width * scale);
-        canvas.height = Math.round(img.height * scale);
-
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-        resolve(canvas.toDataURL("image/jpeg", 0.72));
+        const scale = Math.min(1,max/Math.max(img.width,img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width*scale);
+        canvas.height = Math.round(img.height*scale);
+        canvas.getContext("2d").drawImage(img,0,0,canvas.width,canvas.height);
+        resolve(canvas.toDataURL("image/jpeg",0.68));
       };
-
+      img.onerror = reject;
       img.src = reader.result;
     };
-
+    reader.onerror = reject;
     reader.readAsDataURL(file);
   });
 }
 
-async function uploadDriverPhoto(file) {
-  const d = driver();
-  if (!d || !file) return;
-
-  if (!file.type.startsWith("image/")) {
-    toast("Please select an image.");
-    return;
-  }
-
-  try {
-    d.photo = await resizePhoto(file);
-    scheduleSave();
-    render();
-    toast("Driver photo saved.");
-  } catch (e) {
-    console.error(e);
-    toast("Could not load this photo.");
-  }
+async function saveCompany() {
+  db.settings.company = $("settingCompany").value.trim() || "PRESERVER TRANS LLC";
+  db.settings.location = $("settingLocation").value.trim();
+  db.settings.currency = $("settingCurrency").value;
+  db.rate = Math.max(0,number($("settingRate").value));
+  $("mileageRate").value = db.rate;
+  updateBranding();
+  renderSalary();
+  await saveData(true);
 }
 
-function openDriverModal() {
+async function saveTheme() {
+  db.settings.displayStyle = $("displayStyle").value;
+  db.settings.fontSize = $("fontSize").value;
+  applyTheme();
+  await saveData(true);
+}
+
+function showModal() {
   $("driverModal").classList.remove("hidden");
-  $("newDriverName").focus();
 }
 
-function closeDriverModal() {
-  $("driverModal").classList.add("hidden");
-  $("newDriverName").value = "";
-  $("newTruckNumber").value = "";
-}
+function bindEvents() {
+  $("loginForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    if (!sb) return setMessage("Supabase configuration is missing.");
+    const email = $("loginEmail").value.trim();
+    const password = $("loginPassword").value;
+    const {data,error} = await sb.auth.signInWithPassword({email,password});
+    if (error) return setMessage(error.message);
+    user = data.user;
+    await loadData();
+    showApp();
+  });
 
-function createDriver() {
-  const name = $("newDriverName").value.trim();
-  const truck = $("newTruckNumber").value.trim();
+  $("signupForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const name = $("signupName").value.trim();
+    const email = $("signupEmail").value.trim();
+    const password = $("signupPassword").value;
+    const {data,error} = await sb.auth.signUp({
+      email,password,
+      options:{data:{full_name:name}}
+    });
+    if (error) return setMessage(error.message);
+    if (data.session) {
+      user = data.user;
+      db.settings.username = name;
+      db.settings.manager = name;
+      await saveData(false);
+      showApp();
+    } else {
+      setMessage("Account created. Check your email to confirm, then sign in.",true);
+      $("signupForm").classList.add("hidden");
+      $("loginForm").classList.remove("hidden");
+    }
+  });
 
-  if (!name) {
-    toast("Enter driver name.");
-    return;
-  }
-
-  const d = {
-    id: uid(),
-    name,
-    truck,
-    phone: "",
-    address: "",
-    notes: "",
-    photo: "",
-    months: {}
+  $("showSignup").onclick = () => {
+    $("loginForm").classList.add("hidden");
+    $("showSignup").classList.add("hidden");
+    $("signupForm").classList.remove("hidden");
+    setMessage("");
+  };
+  $("showLogin").onclick = () => {
+    $("signupForm").classList.add("hidden");
+    $("loginForm").classList.remove("hidden");
+    $("showSignup").classList.remove("hidden");
+    setMessage("");
   };
 
-  db.drivers.push(d);
-  activeId = d.id;
+  $("logoutBtn").onclick = async () => {
+    if (sb) await sb.auth.signOut();
+    user = null;
+    $("app").classList.add("hidden");
+    $("loginScreen").classList.remove("hidden");
+  };
 
-  closeDriverModal();
-  scheduleSave();
-  render();
+  document.querySelectorAll(".nav-btn[data-view]").forEach(btn => {
+    btn.addEventListener("click", () => showView(btn.dataset.view));
+  });
 
-  toast("Driver profile created.");
-}
+  $("menuToggle").onclick = () => $("sidebar").classList.toggle("open");
+  $("salaryDriver").onchange = renderSalary;
+  $("salaryMonth").onchange = renderSalary;
 
-// Navigation
-$("navSalary").onclick = () => showView("salary");
-$("navOutstanding").onclick = () => showView("outstanding");
-$("navHistory").onclick = () => showView("history");
-$("navSettings").onclick = () => showView("settings");
+  $("mileageRate").onchange = () => {
+    db.rate = Math.max(0,number($("mileageRate").value));
+    const d = getSelectedDriver();
+    if (d) monthFor(d,getSelectedMonth()).rows.forEach(r => r.rate = db.rate);
+    scheduleSave();
+    renderSalary();
+  };
 
-// Month selector
-$("monthPicker").value = currentMonth;
-$("monthPicker").onchange = e => {
-  currentMonth = e.target.value || currentMonth;
-  render();
-};
+  $("addMileageBtn").onclick = addMileageRow;
+  $("addAdditionBtn").onclick = () => addItem("adds","Addition");
+  $("addFineBtn").onclick = () => addItem("fines","Fine / Deduction");
+  $("addAdvanceBtn").onclick = () => addItem("advances","Advance / Recovery");
+  $("recordPaymentBtn").onclick = recordPayment;
 
-// Driver actions
-$("addDriverBtn").onclick = openDriverModal;
-$("emptyAddBtn").onclick = openDriverModal;
-$("closeModal").onclick = closeDriverModal;
-$("cancelDriver").onclick = closeDriverModal;
-$("createDriver").onclick = createDriver;
+  $("mileageBody").addEventListener("change", e => {
+    const input = e.target.closest("[data-row]");
+    if (!input) return;
+    const d = getSelectedDriver();
+    if (!d) return;
+    const row = monthFor(d,getSelectedMonth()).rows[Number(input.dataset.row)];
+    if (!row) return;
+    const field = input.dataset.field;
+    row[field] = ["prev","next"].includes(field) ? number(input.value) : input.value;
+    scheduleSave();
+    renderSalary();
+  });
 
-$("driverName").onchange = e => updateDriverField("name", e.target.value.trim());
-$("truckNumber").onchange = e => updateDriverField("truck", e.target.value.trim());
-$("driverPhone").onchange = e => updateDriverField("phone", e.target.value.trim());
-$("driverAddress").onchange = e => updateDriverField("address", e.target.value.trim());
-$("driverNotes").onchange = e => updateDriverField("notes", e.target.value.trim());
+  $("mileageBody").addEventListener("click", e => {
+    const btn = e.target.closest("[data-delete-row]");
+    if (!btn) return;
+    if (!confirm("Delete this mileage row?")) return;
+    const d = getSelectedDriver();
+    monthFor(d,getSelectedMonth()).rows.splice(Number(btn.dataset.deleteRow),1);
+    scheduleSave();
+    renderSalary();
+  });
 
-$("photoInput").onchange = e => {
-  uploadDriverPhoto(e.target.files[0]);
-  e.target.value = "";
-};
+  ["additionsBody","finesBody","advancesBody"].forEach(id => {
+    $(id).addEventListener("click", e => {
+      const btn = e.target.closest("[data-item-group]");
+      if (!btn) return;
+      if (!confirm("Delete this entry?")) return;
+      const d = getSelectedDriver();
+      monthFor(d,getSelectedMonth())[btn.dataset.itemGroup].splice(Number(btn.dataset.itemIndex),1);
+      scheduleSave();
+      renderSalary();
+    });
+  });
 
-// Salary sheet actions
-$("addMileageBtn").onclick = addMileage;
-$("addAdditionBtn").onclick = () => addMoneyRow("adds");
-$("addFineBtn").onclick = () => addMoneyRow("fines");
-$("addAdvanceBtn").onclick = () => addMoneyRow("advances");
-$("addRecoveryBtn").onclick = () => addMoneyRow("recoveries");
+  $("addDriverBtn").onclick = showModal;
+  $("addDriverBtn2").onclick = showModal;
+  $("saveDriverBtn").onclick = addDriver;
+  document.querySelectorAll("[data-close]").forEach(b => b.onclick = () => $(b.dataset.close).classList.add("hidden"));
+  $("driverModal").addEventListener("click",e => {
+    if (e.target === $("driverModal")) $("driverModal").classList.add("hidden");
+  });
 
-$("payDueBtn").onclick = payDue;
-$("printBtn").onclick = () => window.print();
-$("printHistoryBtn").onclick = () => window.print();
-$("saveSettings").onclick = saveSettings;
+  $("historySearch").oninput = renderHistory;
+  $("historyBody").addEventListener("click",e => {
+    const b = e.target.closest("[data-open-statement]");
+    if (b) openStatement(b.dataset.openStatement,b.dataset.openMonth);
+  });
+  $("backHistoryBtn").onclick = () => showView("historyView");
+  $("deleteStatementBtn").onclick = deleteCurrentStatement;
+  $("statementPrintBtn").onclick = () => window.print();
+  $("printSalaryBtn").onclick = () => {
+    const d = getSelectedDriver();
+    if (!d) return toast("Select a driver first.");
+    const snapshot = makeStatementSnapshot(d,getSelectedMonth());
+    renderStatement(snapshot);
+    currentStatement = snapshot;
+    showView("statementView");
+    setTimeout(() => window.print(),150);
+  };
 
-// Authentication
-async function authAction(mode) {
-  const email = $("authEmail").value.trim();
-  const password = $("authPassword").value;
+  $("deletedBody").addEventListener("click",e => {
+    const restore = e.target.closest("[data-restore]");
+    const permanent = e.target.closest("[data-permanent]");
+    if (restore) restoreRecord(restore.dataset.restore);
+    if (permanent) permanentDelete(permanent.dataset.permanent);
+  });
 
-  if (!email || !password) {
-    setAuthMessage("Enter your email and password.");
-    return;
-  }
+  $("saveNowBtn").onclick = () => saveData(true);
+  $("saveUsernameBtn").onclick = saveUsername;
+  $("changePasswordBtn").onclick = changePassword;
+  $("saveManagerBtn").onclick = saveManagerProfile;
+  $("saveCompanyBtn").onclick = saveCompany;
+  $("saveThemeBtn").onclick = saveTheme;
 
-  if (password.length < 6) {
-    setAuthMessage("Password must be at least 6 characters.");
-    return;
-  }
+  $("themeChoices").addEventListener("click",e => {
+    const btn = e.target.closest("[data-theme]");
+    if (!btn) return;
+    db.settings.theme = btn.dataset.theme;
+    applyTheme();
+  });
 
-  setAuthMessage(mode === "login" ? "Signing in..." : "Creating account...", true);
-
-  const result = mode === "login"
-    ? await sb.auth.signInWithPassword({ email, password })
-    : await sb.auth.signUp({ email, password });
-
-  if (result.error) {
-    setAuthMessage(result.error.message);
-    return;
-  }
-
-  if (mode === "signup" && !result.data.session) {
-    setAuthMessage("Account created. Confirm your email, then log in.", true);
-    return;
-  }
-
-  user = result.data.user;
-
-  if (user) {
+  $("managerPhoto").onchange = async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 8*1024*1024) return toast("Please choose a photo smaller than 8 MB.");
     try {
-      await loadCloud();
-      toast("Connected to cloud database.");
-    } catch (e) {
-      setAuthMessage("Database error: " + e.message);
+      managerPhotoData = await compressPhoto(file);
+      $("managerPhotoPreview").style.backgroundImage = `url("${managerPhotoData}")`;
+      $("managerPhotoPreview").textContent = "";
+    } catch {
+      toast("Could not load this photo.");
     }
-  }
+  };
+
+  $("settingUsername").addEventListener("keydown",e => {
+    if (e.key === "Enter") saveUsername();
+  });
 }
 
-$("loginBtn").onclick = () => authAction("login");
-$("signupBtn").onclick = () => authAction("signup");
+async function startApp() {
+  $("salaryMonth").value = currentMonth();
+  $("paymentDate").value = today();
 
-$("logoutBtn").onclick = async () => {
-  if (sb) await sb.auth.signOut();
-  user = null;
-  $("loginScreen").classList.remove("hidden");
-  setAuthMessage("You have signed out.", true);
-};
-
-async function init() {
-  if (
-    !window.supabase ||
-    !SUPABASE_URL ||
-    !SUPABASE_ANON_KEY ||
-    SUPABASE_ANON_KEY.includes("PASTE_")
-  ) {
-    setAuthMessage("Add your existing Supabase anon key in supabase-config.js.");
-    return;
+  if (window.supabase && window.SUPABASE_CONFIG &&
+      window.SUPABASE_CONFIG.url && window.SUPABASE_CONFIG.anonKey &&
+      !window.SUPABASE_CONFIG.anonKey.includes("PASTE_")) {
+    sb = window.supabase.createClient(
+      window.SUPABASE_CONFIG.url,
+      window.SUPABASE_CONFIG.anonKey
+    );
+  } else {
+    setMessage("Please add your existing Supabase URL and anon key in supabase-config.js.");
   }
 
-  sb = window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_ANON_KEY
-  );
+  bindEvents();
 
-  const { data, error } = await sb.auth.getSession();
-
-  if (error) {
-    setAuthMessage(error.message);
-    return;
-  }
-
-  if (data.session) {
-    user = data.session.user;
-
+  if (sb) {
+    const {data} = await sb.auth.getSession();
+    if (data.session) {
+      user = data.session.user;
+      await loadData();
+      showApp();
+    }
+    sb.auth.onAuthStateChange(async (event,session) => {
+      if (event === "SIGNED_OUT") {
+        user = null;
+        $("app").classList.add("hidden");
+        $("loginScreen").classList.remove("hidden");
+      }
+    });
+  } else {
     try {
-      await loadCloud();
-    } catch (e) {
-      setAuthMessage("Database error: " + e.message);
-    }
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) normalizeData(JSON.parse(cached));
+    } catch(e) { console.error(e); }
   }
 }
 
-init();
+document.addEventListener("DOMContentLoaded",startApp);
