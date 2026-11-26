@@ -588,6 +588,9 @@ $("logoutBtn").onclick=async()=>{
 };
 
 async function auth(mode){
+    if (!sb) {
+    return authMessage("Supabase connection is not initialized. Check configuration.");
+  }
   const email=$("authEmail").value.trim();
   const password=$("authPassword").value;
   if(!email||!password)return authMessage("Enter email and password.");
@@ -606,29 +609,48 @@ $("loginBtn").onclick=()=>auth("login");
 $("signupBtn").onclick=()=>auth("signup");
 
 
-async function init(){
+
+async function init() {
   try {
     if (!window.supabase) {
-      authMessage("Supabase library load nahi hui. Internet aur script order check karein.");
+      authMessage("Supabase library load nahi hui. Internet check karein.");
       return;
     }
 
-    if (!URL || !KEY) {
-      authMessage("Supabase URL ya Anon Key missing hai.");
+    if (!SUPABASE_URL || !SUPABASE_KEY) {
+      authMessage("Supabase URL ya public key missing hai.");
       return;
     }
 
-    if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(URL.trim())) {
-      authMessage("Supabase URL format incorrect hai. supabase-config.js check karein.");
+    let parsedURL;
+
+    try {
+      parsedURL = new window.URL(SUPABASE_URL);
+    } catch {
+      authMessage("Supabase URL invalid hai. Config file check karein.");
       return;
     }
 
-    if (KEY.includes("PASTE_") || KEY.includes("yaha key")) {
-      authMessage("Please apni actual Supabase anon/public key paste karein.");
+    if (
+      parsedURL.protocol !== "https:" ||
+      parsedURL.hostname !== "lriojwlaxemghavidsjt.supabase.co"
+    ) {
+      authMessage("Supabase project URL incorrect hai.");
       return;
     }
 
-    sb = window.supabase.createClient(URL.trim(), KEY.trim());
+    if (
+      !SUPABASE_KEY.startsWith("sb_publishable_") &&
+      !SUPABASE_KEY.startsWith("eyJ")
+    ) {
+      authMessage("Supabase public key format incorrect hai.");
+      return;
+    }
+
+    sb = window.supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_KEY
+    );
 
     authMessage("Checking account connection...");
 
@@ -640,12 +662,8 @@ async function init(){
       user = data.session.user;
       authMessage("Loading payroll data...");
 
-      try {
-        await loadCloud();
-        toast("Payroll account connected.");
-      } catch (e) {
-        authMessage("Database error: " + e.message);
-      }
+      await loadCloud();
+      toast("Payroll account connected.");
     } else {
       authMessage("");
     }
