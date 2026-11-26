@@ -1,327 +1,175 @@
 
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Preserver Trans LLC | Driver Salary</title>
-  <link rel="stylesheet" href="styles.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-config.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Preserver Trans LLC | Payroll Pro</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
 </head>
 <body>
-  <div id="loginScreen" class="login-screen">
-    <div class="login-card">
-      <div class="brand-logo large">
-        <svg viewBox="0 0 100 70" aria-hidden="true">
-          <path d="M5 15h55v35H5z M60 27h19l15 15v8H60z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/>
-          <path d="M70 31v12h17L76 31z" fill="currentColor"/>
-          <circle cx="24" cy="53" r="9" fill="#111827" stroke="currentColor" stroke-width="4"/>
-          <circle cx="77" cy="53" r="9" fill="#111827" stroke="currentColor" stroke-width="4"/>
-          <path d="M12 25h38M12 34h28" stroke="currentColor" stroke-width="3"/>
-        </svg>
-      </div>
-      <div class="login-brand">PRESERVER TRANS LLC</div>
-      <div class="login-subtitle">DRIVER SALARY MANAGEMENT</div>
+<div id="loginScreen" class="login-screen">
+  <div class="login-glow"></div>
+  <div class="login-card">
+    <div class="login-logo">
+      <svg viewBox="0 0 120 80"><path d="M5 12h70v48H5zM75 28h23l17 18v14H75z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/><path d="M84 33v13h22L94 33z" fill="currentColor"/><circle cx="29" cy="64" r="11" fill="#101a2b" stroke="currentColor" stroke-width="5"/><circle cx="95" cy="64" r="11" fill="#101a2b" stroke="currentColor" stroke-width="5"/><path d="M15 25h48M15 36h37" stroke="currentColor" stroke-width="4"/></svg>
+    </div>
+    <div class="login-company">PRESERVER TRANS</div>
+    <div class="login-llc">LLC · USA CALIFORNIA</div>
+    <div class="login-line"></div>
+    <h1>Payroll Management</h1>
+    <p class="login-caption">Secure Driver Salary & Fleet Records</p>
+    <div id="loginMessage" class="message"></div>
+    <form id="loginForm">
+      <label>Email Address</label>
+      <input id="loginEmail" type="email" placeholder="Enter your email" required>
+      <label>Password</label>
+      <input id="loginPassword" type="password" placeholder="Enter your password" required>
+      <button class="btn primary full login-submit">Sign In to Dashboard <span>→</span></button>
+    </form>
+    <div class="login-or">SECURE ACCOUNT ACCESS</div>
+    <button class="btn outline full" id="showSignup">Create New Account</button>
+    <form id="signupForm" class="hidden">
+      <label>Full Name</label><input id="signupName" required placeholder="Your name">
+      <label>Email Address</label><input id="signupEmail" type="email" required placeholder="Your email">
+      <label>Password</label><input id="signupPassword" type="password" minlength="6" required placeholder="At least 6 characters">
+      <button class="btn primary full">Create Account</button>
+      <button class="btn text-btn full" type="button" id="showLogin">Back to Login</button>
+    </form>
+    <div class="login-footer">PRESERVER TRANS LLC <span>•</span> PROFESSIONAL FLEET PAYROLL</div>
+  </div>
+</div>
 
-      <div id="loginMessage" class="message"></div>
+<div id="app" class="app hidden">
+<aside class="sidebar" id="sidebar">
+  <div class="side-brand">
+    <div class="side-logo"><svg viewBox="0 0 100 70"><path d="M4 10h58v42H4zM62 25h18l16 17v10H62z" fill="none" stroke="currentColor" stroke-width="5"/><circle cx="23" cy="55" r="9" fill="#101a2b" stroke="currentColor" stroke-width="4"/><circle cx="79" cy="55" r="9" fill="#101a2b" stroke="currentColor" stroke-width="4"/></svg></div>
+    <div><strong>PRESERVER TRANS</strong><small>PAYROLL PRO · LLC</small></div>
+  </div>
+  <div class="nav-label">WORKSPACE</div>
+  <button class="nav-btn active" data-view="salaryView">▦ <span>Salary Sheets</span></button>
+  <button class="nav-btn" data-view="historyView">◷ <span>Salary History</span></button>
+  <button class="nav-btn" data-view="duesView">＄ <span>Outstanding Dues</span></button>
+  <button class="nav-btn" data-view="paymentsView">▤ <span>Payment History</span></button>
+  <button class="nav-btn" data-view="deletedView">▣ <span>Deleted Records</span><b id="deletedCount">0</b></button>
+  <div class="nav-label">FLEET REPORTS</div>
+  <button class="nav-btn" data-view="analyticsView">▥ <span>Driver Performance</span></button>
+  <button class="nav-btn" data-view="driversView">♙ <span>Drivers</span></button>
+  <div class="nav-label">PREFERENCES</div>
+  <button class="nav-btn" data-view="settingsView">⚙ <span>Settings & Themes</span></button>
+  <div class="sidebar-bottom">
+    <div class="manager-mini"><div class="mini-avatar" id="sideAvatar">SA</div><div><b id="sideManagerName">Saim Ali</b><small>Account Manager</small></div></div>
+    <button class="nav-btn logout-btn" id="logoutBtn">↪ <span>Sign Out</span></button>
+  </div>
+</aside>
 
-      <form id="loginForm">
-        <label>Email Address</label>
-        <input id="loginEmail" type="email" placeholder="Enter your email" required>
+<main class="main-area">
+<header class="topbar">
+  <div class="top-left"><button id="menuToggle" class="menu-toggle">☰</button><div><b id="topCompany">PRESERVER TRANS LLC</b><small id="pageTitle">Salary Sheets</small></div></div>
+  <div class="top-user"><i></i><span id="topUsername">Saim Ali</span></div>
+</header>
+<div class="content">
 
-        <label>Password</label>
-        <input id="loginPassword" type="password" placeholder="Enter your password" required>
+<section id="salaryView" class="view active-view">
+  <div class="section-heading"><div><h1>Driver Salary Management</h1><p>Monthly mileage, previous balance, advances and payments.</p></div><button class="btn primary" id="addDriverBtn">＋ Add Driver</button></div>
+  <div class="toolbar">
+    <div class="field"><label>Select Driver</label><select id="salaryDriver"></select></div>
+    <div class="field"><label>Salary Month</label><input type="month" id="salaryMonth"></div>
+    <div class="field"><label>Mileage Rate ($)</label><input type="number" id="mileageRate" min="0" step=".01"></div>
+    <button class="btn outline" id="printSalaryBtn">Print Statement</button>
+  </div>
+  <div class="driver-banner" id="salaryDriverInfo"></div>
+  <div class="stats-grid">
+    <div class="stat-card"><span>New Miles This Month</span><strong id="statMiles">0</strong></div>
+    <div class="stat-card"><span>Current Month Salary</span><strong id="statMileage">$0.00</strong></div>
+    <div class="stat-card"><span>Previous Balance Due</span><strong id="statPreviousDue">$0.00</strong></div>
+    <div class="stat-card highlight"><span>Total Amount Due</span><strong id="statDue">$0.00</strong></div>
+  </div>
+  <div class="stats-grid second-stats">
+    <div class="stat-card"><span>Advance Given</span><strong id="statAdvance">$0.00</strong></div>
+    <div class="stat-card"><span>Advance Recovered</span><strong id="statRecovered">$0.00</strong></div>
+    <div class="stat-card"><span>Remaining Advance</span><strong id="statAdvanceBalance">$0.00</strong></div>
+    <div class="stat-card"><span>Paid This Month</span><strong id="statPaid">$0.00</strong></div>
+  </div>
 
-        <button class="btn primary full" type="submit">Sign In</button>
-      </form>
+  <div class="panel">
+    <div class="panel-heading"><div><h2>Monthly Mileage Record</h2><p>Previous miles are carried forward automatically. Enter only new miles.</p></div><button class="btn small primary" id="addMileageBtn">＋ Add New Miles</button></div>
+    <div class="table-wrap"><table><thead><tr><th>#</th><th>Date</th><th>Load / Notes</th><th>Previous Miles</th><th>New Miles</th><th>Ending Miles</th><th>Rate</th><th>Pay</th><th>Action</th></tr></thead><tbody id="mileageBody"></tbody></table></div>
+  </div>
 
-      <div class="login-divider">OR</div>
-      <button class="btn outline full" id="showSignup">Create New Account</button>
+  <div class="two-column">
+    <div class="panel"><div class="panel-heading"><div><h2>Extra Amounts / Bonus</h2><p>Additional earnings.</p></div><button class="btn small primary" id="addAdditionBtn">＋ Add</button></div><div class="table-wrap"><table><thead><tr><th>Description</th><th>Amount</th><th>Action</th></tr></thead><tbody id="additionsBody"></tbody></table></div></div>
+    <div class="panel"><div class="panel-heading"><div><h2>Fines / Deductions</h2><p>Driver fines and deductions.</p></div><button class="btn small primary" id="addFineBtn">＋ Add</button></div><div class="table-wrap"><table><thead><tr><th>Description</th><th>Amount</th><th>Action</th></tr></thead><tbody id="finesBody"></tbody></table></div></div>
+  </div>
 
-      <form id="signupForm" class="hidden">
-        <label>Full Name</label>
-        <input id="signupName" type="text" placeholder="Your name" required>
-        <label>Email Address</label>
-        <input id="signupEmail" type="email" placeholder="Your email" required>
-        <label>Password</label>
-        <input id="signupPassword" type="password" minlength="6" placeholder="At least 6 characters" required>
-        <button class="btn primary full" type="submit">Create Account</button>
-        <button class="btn text-btn full" type="button" id="showLogin">Back to Login</button>
-      </form>
-
-      <div class="login-footer">USA · CALIFORNIA</div>
+  <div class="two-column">
+    <div class="panel">
+      <div class="panel-heading"><div><h2>Driver Advance</h2><p>Give an advance or recover any amount.</p></div></div>
+      <div class="advance-form"><input id="advanceAmount" type="number" min="0" step=".01" placeholder="Advance amount"><input id="advanceNote" placeholder="Reason / note"><button class="btn primary" id="giveAdvanceBtn">Give Advance</button></div>
+      <div class="advance-form"><input id="recoverAmount" type="number" min="0" step=".01" placeholder="Recovery amount"><input id="recoverNote" placeholder="Recovery note"><button class="btn outline" id="recoverAdvanceBtn">Deduct Advance</button></div>
+      <div id="advanceBalanceInfo" class="balance-info"></div>
+      <div class="table-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>Note</th><th>Amount</th></tr></thead><tbody id="advanceLedgerBody"></tbody></table></div>
+    </div>
+    <div class="panel">
+      <div class="panel-heading"><div><h2>Pay Driver</h2><p>Record cash, check, bank transfer or another payment method.</p></div></div>
+      <label>Payment Amount</label><input type="number" id="paymentAmount" min="0" step=".01" placeholder="Enter amount">
+      <label>Payment Method</label><select id="paymentMethod"><option>Bank Transfer</option><option>Check</option><option>Cash</option><option>Zelle</option><option>Other</option></select>
+      <label>Check / Transfer Reference</label><input id="paymentReference" placeholder="Check number / transfer ID (optional)">
+      <label>Payment Date</label><input type="date" id="paymentDate">
+      <label>Payment Note</label><input id="paymentNote" placeholder="Additional details">
+      <button class="btn primary full pay-button" id="recordPaymentBtn">✓ Pay Driver & Save Receipt</button>
+      <div class="payment-summary" id="paymentSummary"></div>
     </div>
   </div>
+  <div class="panel totals-panel"><div class="panel-heading"><div><h2>Salary Summary</h2><p>Previous balance is included in the total due.</p></div></div><div id="salaryTotals"></div><div class="save-row"><span id="saveStatus">Changes save automatically.</span><button class="btn primary" id="saveNowBtn">Save Changes</button></div></div>
+</section>
 
-  <div id="app" class="app hidden">
-    <aside class="sidebar" id="sidebar">
-      <div class="side-brand">
-        <div class="brand-logo">
-          <svg viewBox="0 0 100 70" aria-hidden="true">
-            <path d="M5 15h55v35H5z M60 27h19l15 15v8H60z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/>
-            <path d="M70 31v12h17L76 31z" fill="currentColor"/>
-            <circle cx="24" cy="53" r="9" fill="#111827" stroke="currentColor" stroke-width="4"/>
-            <circle cx="77" cy="53" r="9" fill="#111827" stroke="currentColor" stroke-width="4"/>
-            <path d="M12 25h38M12 34h28" stroke="currentColor" stroke-width="3"/>
-          </svg>
-        </div>
-        <div>
-          <strong>PRESERVER TRANS</strong>
-          <small>LLC · USA CALIFORNIA</small>
-        </div>
-      </div>
+<section id="historyView" class="view">
+  <div class="section-heading"><div><h1>Salary History</h1><p>Open any driver's complete saved monthly statement.</p></div></div>
+  <div class="panel"><div class="panel-heading"><h2>Monthly Salary Sheets</h2><input id="historySearch" class="search-input" placeholder="Search driver or month"></div><div class="table-wrap"><table><thead><tr><th>Driver</th><th>Truck</th><th>Month</th><th>Miles</th><th>Salary</th><th>Paid</th><th>Remaining</th><th>Open</th></tr></thead><tbody id="historyBody"></tbody></table></div></div>
+</section>
 
-      <div class="sidebar-label">MAIN MENU</div>
-      <button class="nav-btn active" data-view="salaryView">▦ <span>Salary Sheets</span></button>
-      <button class="nav-btn" data-view="historyView">◷ <span>Salary History</span></button>
-      <button class="nav-btn" data-view="duesView">＄ <span>Outstanding Dues</span></button>
-      <button class="nav-btn" data-view="paymentsView">▤ <span>Payment History</span></button>
-      <button class="nav-btn" data-view="deletedView">▣ <span>Deleted Records</span><span id="deletedCount" class="nav-count">0</span></button>
+<section id="statementView" class="view">
+  <div class="section-heading"><div><h1>Salary Statement</h1><p id="statementSubtitle">Read-only record</p></div><div class="button-row"><button class="btn outline" id="statementPrintBtn">Print</button><button class="btn danger" id="deleteStatementBtn">Delete</button><button class="btn outline" id="backHistoryBtn">← Back</button></div></div>
+  <div id="statementContent" class="statement-paper"></div>
+</section>
 
-      <div class="sidebar-label">MANAGEMENT</div>
-      <button class="nav-btn" data-view="driversView">♙ <span>Drivers</span></button>
-      <button class="nav-btn" data-view="settingsView">⚙ <span>Settings</span></button>
+<section id="duesView" class="view"><div class="section-heading"><div><h1>Outstanding Dues</h1><p>Unpaid salary balances by driver.</p></div></div><div class="panel"><div class="table-wrap"><table><thead><tr><th>Driver</th><th>Truck</th><th>Unpaid Months</th><th>Total Due</th><th>Action</th></tr></thead><tbody id="duesBody"></tbody></table></div></div></section>
 
-      <div class="sidebar-bottom">
-        <div class="sidebar-user">
-          <div class="user-avatar" id="sideAvatar">SA</div>
-          <div class="user-info">
-            <strong id="sideManagerName">Account Manager</strong>
-            <small>Account Manager</small>
-          </div>
-        </div>
-        <button class="nav-btn logout-btn" id="logoutBtn">↪ <span>Sign Out</span></button>
-      </div>
-    </aside>
+<section id="paymentsView" class="view"><div class="section-heading"><div><h1>Payment History</h1><p>Every payment receipt, payment method and reference.</p></div></div><div class="panel"><div class="table-wrap"><table><thead><tr><th>Date</th><th>Driver</th><th>Month</th><th>Amount</th><th>Method</th><th>Reference</th><th>Note</th></tr></thead><tbody id="paymentsBody"></tbody></table></div></div></section>
 
-    <main class="main-area">
-      <header class="topbar">
-        <button id="menuToggle" class="menu-toggle">☰</button>
-        <div>
-          <div class="top-company" id="topCompany">PRESERVER TRANS LLC</div>
-          <div class="top-page" id="pageTitle">Salary Sheets</div>
-        </div>
-        <div class="top-right">
-          <span class="online-dot"></span>
-          <span id="topUsername">Account Manager</span>
-        </div>
-      </header>
+<section id="deletedView" class="view"><div class="section-heading"><div><h1>Deleted Records</h1><p>Restore records or permanently delete after password verification.</p></div></div><div class="warning-note">Permanent deletion cannot be undone.</div><div class="panel"><div class="table-wrap"><table><thead><tr><th>Driver</th><th>Month</th><th>Deleted On</th><th>Actions</th></tr></thead><tbody id="deletedBody"></tbody></table></div></div></section>
 
-      <div class="content">
+<section id="analyticsView" class="view">
+  <div class="section-heading"><div><h1>Driver Performance Report</h1><p>Compare mileage, salary, fines, advances and payments.</p></div><button class="btn outline" id="printAnalyticsBtn">Print Report</button></div>
+  <div class="toolbar"><div class="field"><label>Report Period</label><select id="analyticsPeriod"><option value="all">All Records</option><option value="year">This Year</option><option value="month">Selected Month</option></select></div><div class="field"><label>Month</label><input type="month" id="analyticsMonth"></div><div class="field"><label>Report Layout</label><select id="reportLayout"><option value="table">Detailed Table</option><option value="cards">Driver Cards</option><option value="compact">Compact Rows</option><option value="wide">Wide Table</option></select></div><div class="field"><label>Report Color</label><select id="reportColor"><option value="gold">Gold</option><option value="blue">Blue</option><option value="green">Green</option><option value="purple">Purple</option><option value="red">Red</option><option value="slate">Slate</option></select></div></div>
+  <div class="report-controls panel"><b>Show / Hide Columns</b><div id="columnChoices" class="column-choices"></div><button class="btn small outline" id="resetColumnsBtn">Reset Columns</button></div>
+  <div id="analyticsContent"></div>
+  <div id="driverDetail" class="panel hidden"></div>
+</section>
 
-        <!-- SALARY SHEETS -->
-        <section id="salaryView" class="view active-view">
-          <div class="section-heading">
-            <div>
-              <h1>Driver Salary Sheets</h1>
-              <p>Manage monthly mileage, earnings, deductions and payments.</p>
-            </div>
-            <button class="btn primary" id="addDriverBtn">＋ Add Driver</button>
-          </div>
+<section id="driversView" class="view"><div class="section-heading"><div><h1>Driver Profiles</h1><p>Permanent driver records and profile pictures.</p></div><button class="btn primary" id="addDriverBtn2">＋ Add Driver</button></div><div class="panel"><div class="table-wrap"><table><thead><tr><th>Photo</th><th>Driver</th><th>Truck</th><th>Phone</th><th>Address</th></tr></thead><tbody id="driversBody"></tbody></table></div></div></section>
 
-          <div class="toolbar">
-            <div class="field-inline">
-              <label>Driver</label>
-              <select id="salaryDriver"></select>
-            </div>
-            <div class="field-inline">
-              <label>Salary Month</label>
-              <input type="month" id="salaryMonth">
-            </div>
-            <div class="field-inline">
-              <label>Mileage Rate ($)</label>
-              <input type="number" id="mileageRate" min="0" step="0.01">
-            </div>
-            <button class="btn outline" id="printSalaryBtn">Print Sheet</button>
-          </div>
-
-          <div id="salaryDriverInfo" class="driver-info-card"></div>
-
-          <div class="stats-grid">
-            <div class="stat-card"><span>Total Miles</span><strong id="statMiles">0</strong></div>
-            <div class="stat-card"><span>Mileage Earnings</span><strong id="statMileage">$0.00</strong></div>
-            <div class="stat-card"><span>Net Salary</span><strong id="statNet">$0.00</strong></div>
-            <div class="stat-card"><span>Remaining Due</span><strong id="statDue">$0.00</strong></div>
-          </div>
-
-          <div class="panel">
-            <div class="panel-heading">
-              <div><h2>Mileage Record</h2><p>Enter previous and ending odometer readings.</p></div>
-              <button class="btn small primary" id="addMileageBtn">＋ Add Mileage Row</button>
-            </div>
-            <div class="table-wrap">
-              <table>
-                <thead><tr><th>#</th><th>Date</th><th>Load / Notes</th><th>Previous Miles</th><th>Ending Miles</th><th>Total Miles</th><th>Rate</th><th>Amount</th><th>Action</th></tr></thead>
-                <tbody id="mileageBody"></tbody>
-              </table>
-            </div>
-          </div>
-
-          <div class="two-column">
-            <div class="panel">
-              <div class="panel-heading"><div><h2>Additions / Extra Amounts</h2><p>Bonus, extra pay and other additions.</p></div><button class="btn small primary" id="addAdditionBtn">＋ Add</button></div>
-              <div class="table-wrap"><table><thead><tr><th>Description</th><th>Amount</th><th>Action</th></tr></thead><tbody id="additionsBody"></tbody></table></div>
-            </div>
-            <div class="panel">
-              <div class="panel-heading"><div><h2>Fines / Deductions</h2><p>Fines and other deductions.</p></div><button class="btn small primary" id="addFineBtn">＋ Add</button></div>
-              <div class="table-wrap"><table><thead><tr><th>Description</th><th>Amount</th><th>Action</th></tr></thead><tbody id="finesBody"></tbody></table></div>
-            </div>
-          </div>
-
-          <div class="two-column">
-            <div class="panel">
-              <div class="panel-heading"><div><h2>Advance / Recovery</h2><p>Advance payments and recoveries.</p></div><button class="btn small primary" id="addAdvanceBtn">＋ Add</button></div>
-              <div class="table-wrap"><table><thead><tr><th>Description</th><th>Amount</th><th>Action</th></tr></thead><tbody id="advancesBody"></tbody></table></div>
-            </div>
-            <div class="panel">
-              <div class="panel-heading"><div><h2>Salary Payment</h2><p>Record a payment made to this driver.</p></div></div>
-              <div class="payment-entry">
-                <input type="number" id="paymentAmount" min="0" step="0.01" placeholder="Payment amount">
-                <input type="date" id="paymentDate">
-                <input type="text" id="paymentNote" placeholder="Payment note / method">
-                <button class="btn primary" id="recordPaymentBtn">Record Payment</button>
-              </div>
-              <div class="payment-summary" id="paymentSummary"></div>
-            </div>
-          </div>
-          <div class="panel totals-panel">
-            <h2>Monthly Salary Summary</h2>
-            <div id="salaryTotals"></div>
-            <div class="save-row"><span id="saveStatus">All changes are saved automatically.</span><button class="btn primary" id="saveNowBtn">Save Changes</button></div>
-          </div>
-        </section>
-
-        <!-- HISTORY -->
-        <section id="historyView" class="view">
-          <div class="section-heading"><div><h1>Salary History</h1><p>Open a driver's saved monthly salary statement.</p></div></div>
-          <div class="panel">
-            <div class="panel-heading"><h2>Monthly Salary Sheets</h2><input id="historySearch" class="search-input" placeholder="Search driver or month..."></div>
-            <div class="table-wrap"><table><thead><tr><th>Driver</th><th>Truck</th><th>Salary Month</th><th>Total Miles</th><th>Net Salary</th><th>Paid</th><th>Remaining</th><th>Open</th></tr></thead><tbody id="historyBody"></tbody></table></div>
-          </div>
-          <div class="panel">
-            <div class="panel-heading"><h2>Payment Transactions</h2><p>Individual salary payments.</p></div>
-            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Driver</th><th>Month</th><th>Payment</th><th>Note</th></tr></thead><tbody id="historyPaymentsBody"></tbody></table></div>
-          </div>
-        </section>
-
-        <!-- READ ONLY STATEMENT -->
-        <section id="statementView" class="view">
-          <div class="section-heading">
-            <div><h1>Salary Statement</h1><p id="statementSubtitle">Read-only historical record.</p></div>
-            <div class="button-row"><button class="btn outline" id="statementPrintBtn">Print</button><button class="btn danger" id="deleteStatementBtn">Delete Record</button><button class="btn outline" id="backHistoryBtn">← Back</button></div>
-          </div>
-          <div id="statementContent" class="statement-paper"></div>
-        </section>
-
-        <!-- DUES -->
-        <section id="duesView" class="view">
-          <div class="section-heading"><div><h1>Outstanding Dues</h1><p>Drivers with unpaid salary balances.</p></div></div>
-          <div class="panel"><div class="table-wrap"><table><thead><tr><th>Driver</th><th>Truck</th><th>Months</th><th>Total Salary</th><th>Total Paid</th><th>Outstanding</th></tr></thead><tbody id="duesBody"></tbody></table></div></div>
-        </section>
-
-        <!-- PAYMENT HISTORY -->
-        <section id="paymentsView" class="view">
-          <div class="section-heading"><div><h1>Payment History</h1><p>All recorded driver payments.</p></div></div>
-          <div class="panel"><div class="table-wrap"><table><thead><tr><th>Date</th><th>Driver</th><th>Truck</th><th>Month</th><th>Amount</th><th>Note</th></tr></thead><tbody id="paymentsBody"></tbody></table></div></div>
-        </section>
-
-        <!-- DELETED RECORDS -->
-        <section id="deletedView" class="view">
-          <div class="section-heading"><div><h1>Deleted Records</h1><p>Deleted salary sheets are kept here until permanently removed.</p></div></div>
-          <div class="warning-note">Permanent deletion cannot be undone. Your login password is required.</div>
-          <div class="panel"><div class="table-wrap"><table><thead><tr><th>Driver</th><th>Truck</th><th>Month</th><th>Deleted On</th><th>Net Salary</th><th>Actions</th></tr></thead><tbody id="deletedBody"></tbody></table></div></div>
-        </section>
-
-        <!-- DRIVERS -->
-        <section id="driversView" class="view">
-          <div class="section-heading"><div><h1>Driver Profiles</h1><p>Permanent driver information.</p></div><button class="btn primary" id="addDriverBtn2">＋ Add Driver</button></div>
-          <div class="panel"><div class="table-wrap"><table><thead><tr><th>Driver</th><th>Truck</th><th>Phone</th><th>Address</th><th>Notes</th></tr></thead><tbody id="driversBody"></tbody></table></div></div>
-        </section>
-
-        <!-- SETTINGS -->
-        <section id="settingsView" class="view">
-          <div class="section-heading"><div><h1>Settings & Customization</h1><p>Manage your account, manager profile and display preferences.</p></div></div>
-
-          <div class="settings-grid">
-            <div class="panel">
-              <h2>Account Settings</h2>
-              <p class="muted">Change your display username or login credentials.</p>
-              <label>Display Username</label><input id="settingUsername" placeholder="Your display name">
-              <label>Login Email</label><input id="settingEmail" type="email" disabled>
-              <button class="btn primary full" id="saveUsernameBtn">Save Username</button>
-              <div class="divider"></div>
-              <h3>Change Login Password</h3>
-              <label>Current Password</label><input id="currentPassword" type="password" placeholder="Current password">
-              <label>New Password</label><input id="newPassword" type="password" minlength="6" placeholder="New password">
-              <label>Confirm New Password</label><input id="confirmPassword" type="password" minlength="6" placeholder="Confirm new password">
-              <button class="btn primary full" id="changePasswordBtn">Update Password</button>
-            </div>
-
-            <div class="panel">
-              <h2>Account Manager Profile</h2>
-              <p class="muted">Password verification is required before changing these details.</p>
-              <div class="manager-profile">
-                <div id="managerPhotoPreview" class="manager-photo">SA</div>
-                <div><label>Manager Photo</label><input id="managerPhoto" type="file" accept="image/*"></div>
-              </div>
-              <label>Manager Name</label><input id="managerName" placeholder="Manager name">
-              <label>Designation</label><input id="managerDesignation" placeholder="Account Manager">
-              <label>Phone Number</label><input id="managerPhone" placeholder="Phone number">
-              <label>Additional Details</label><textarea id="managerDetails" rows="3" placeholder="Manager details"></textarea>
-              <label>Verify Login Password</label><input id="managerVerifyPassword" type="password" placeholder="Enter current password">
-              <button class="btn primary full" id="saveManagerBtn">Verify & Save Manager Profile</button>
-            </div>
-
-            <div class="panel">
-              <h2>Company Settings</h2>
-              <label>Company Name</label><input id="settingCompany">
-              <label>Company Location</label><input id="settingLocation">
-              <label>Default Mileage Rate ($)</label><input id="settingRate" type="number" min="0" step="0.01">
-              <label>Currency</label><select id="settingCurrency"><option value="$">USD ($)</option><option value="€">EUR (€)</option><option value="£">GBP (£)</option></select>
-              <button class="btn primary full" id="saveCompanyBtn">Save Company Settings</button>
-            </div>
-
-            <div class="panel">
-              <h2>Display & Theme</h2>
-              <p class="muted">Select a design. Your selection will be saved to your account.</p>
-              <label>Color Theme</label>
-              <div class="theme-grid" id="themeChoices">
-                <button class="theme-choice" data-theme="navy" type="button"><i class="swatch navy"></i>Navy Gold</button>
-                <button class="theme-choice" data-theme="black" type="button"><i class="swatch black"></i>Black Gold</button>
-                <button class="theme-choice" data-theme="blue" type="button"><i class="swatch blue"></i>Ocean Blue</button>
-                <button class="theme-choice" data-theme="purple" type="button"><i class="swatch purple"></i>Purple</button>
-                <button class="theme-choice" data-theme="green" type="button"><i class="swatch green"></i>Emerald</button>
-                <button class="theme-choice" data-theme="red" type="button"><i class="swatch red"></i>Crimson</button>
-                <button class="theme-choice" data-theme="light" type="button"><i class="swatch light"></i>Clean Light</button>
-                <button class="theme-choice" data-theme="slate" type="button"><i class="swatch slate"></i>Slate</button>
-              </div>
-              <label>Display Style</label>
-              <select id="displayStyle"><option value="modern">Modern Cards</option><option value="compact">Compact Layout</option><option value="rounded">Rounded Design</option></select>
-              <label>Font Size</label>
-              <select id="fontSize"><option value="normal">Normal</option><option value="large">Large</option><option value="small">Small</option></select>
-              <button class="btn primary full" id="saveThemeBtn">Save & Apply Theme</button>
-            </div>
-          </div>
-        </section>
-      </div>
-    </main>
+<section id="settingsView" class="view">
+  <div class="section-heading"><div><h1>Settings & Personalization</h1><p>Customize the payroll workspace and account.</p></div></div>
+  <div class="settings-grid">
+    <div class="panel"><h2>Account Settings</h2><label>Display Username</label><input id="settingUsername"><button class="btn primary full" id="saveUsernameBtn">Save Username</button><label>Login Email</label><input id="settingEmail" disabled><div class="divider"></div><h3>Change Password</h3><label>Current Password</label><input id="currentPassword" type="password"><label>New Password</label><input id="newPassword" type="password"><label>Confirm Password</label><input id="confirmPassword" type="password"><button class="btn primary full" id="changePasswordBtn">Update Password</button></div>
+    <div class="panel"><h2>Account Manager Profile</h2><div class="manager-profile"><div id="managerPhotoPreview" class="manager-photo">SA</div><div><label>Profile Picture</label><input id="managerPhoto" type="file" accept="image/*"></div></div><label>Manager Name</label><input id="managerName"><label>Designation</label><input id="managerDesignation"><label>Phone</label><input id="managerPhone"><label>About Manager</label><textarea id="managerDetails"></textarea><label>Verify Login Password</label><input id="managerVerifyPassword" type="password"><button class="btn primary full" id="saveManagerBtn">Verify & Save Profile</button></div>
+    <div class="panel"><h2>Company & Payroll</h2><label>Company Name</label><input id="settingCompany"><label>Location</label><input id="settingLocation"><label>Default Mileage Rate</label><input id="settingRate" type="number" step=".01"><label>Currency</label><select id="settingCurrency"><option value="$">USD ($)</option><option value="£">GBP (£)</option><option value="€">EUR (€)</option></select><button class="btn primary full" id="saveCompanyBtn">Save Company Settings</button></div>
+    <div class="panel"><h2>Workspace Themes</h2><p class="muted">Choose your preferred professional design.</p><div id="themeChoices" class="theme-grid">
+      <button data-theme="navy" class="theme-choice">Navy Gold</button><button data-theme="black" class="theme-choice">Black Gold</button><button data-theme="blue" class="theme-choice">Ocean Blue</button><button data-theme="purple" class="theme-choice">Royal Purple</button><button data-theme="green" class="theme-choice">Emerald Green</button><button data-theme="red" class="theme-choice">Crimson Red</button><button data-theme="light" class="theme-choice">Clean Light</button><button data-theme="slate" class="theme-choice">Slate Grey</button><button data-theme="teal" class="theme-choice">Modern Teal</button><button data-theme="brown" class="theme-choice">Chocolate Gold</button><button data-theme="orange" class="theme-choice">Sunset Orange</button><button data-theme="rose" class="theme-choice">Rose Pink</button>
+    </div><label>Panel Design</label><select id="displayStyle"><option value="modern">Modern Professional</option><option value="compact">Compact Spreadsheet</option><option value="rounded">Extra Rounded</option><option value="sharp">Sharp Corporate</option></select><label>Font Size</label><select id="fontSize"><option value="normal">Normal</option><option value="large">Large</option><option value="small">Small</option></select><label>Sidebar Style</label><select id="sidebarStyle"><option value="gradient">Gradient</option><option value="solid">Solid</option><option value="soft">Soft</option></select><button class="btn primary full" id="saveThemeBtn">Save & Apply Design</button></div>
   </div>
+</section>
+</div>
+</main>
+</div>
 
-  <!-- ADD DRIVER MODAL -->
-  <div id="driverModal" class="modal hidden">
-    <div class="modal-card">
-      <div class="modal-title"><h2>Add Driver</h2><button class="close-modal" data-close="driverModal">×</button></div>
-      <label>Driver Name</label><input id="newDriverName" placeholder="Full name">
-      <label>Truck Number</label><input id="newDriverTruck" placeholder="Truck number">
-      <label>Phone Number</label><input id="newDriverPhone" placeholder="Phone">
-      <label>Address</label><input id="newDriverAddress" placeholder="Address">
-      <label>Notes</label><textarea id="newDriverNotes" rows="2"></textarea>
-      <button class="btn primary full" id="saveDriverBtn">Save Driver</button>
-    </div>
-  </div>
-
-  <div id="appToast" class="toast"></div>
-  <script src="app.js"></script>
+<div id="driverModal" class="modal hidden"><div class="modal-card"><div class="modal-title"><h2>Add Driver Profile</h2><button class="close-modal" data-close="driverModal">×</button></div><label>Driver Name</label><input id="newDriverName"><label>Truck Number</label><input id="newDriverTruck"><label>Phone Number</label><input id="newDriverPhone"><label>Address</label><input id="newDriverAddress"><label>Driver Picture</label><input id="newDriverPhoto" type="file" accept="image/*"><label>Notes</label><textarea id="newDriverNotes"></textarea><button class="btn primary full" id="saveDriverBtn">Save Driver</button></div></div>
+<div id="appToast" class="toast"></div>
+<script src="app.js"></script>
 </body>
 </html>
