@@ -47,7 +47,7 @@ function normalize(){
   db.drivers.forEach(d=>{
     d.months||={};d.photo||="";d.name||="";d.truck||="";
     Object.values(d.months).forEach(m=>{
-      ["rows","adds","fines","advances","recoveries","layovers","payments"].forEach(k=>m[k]||[]);
+     ["rows","adds","fines","advances","recoveries","layovers","payments"].forEach(k=>m[k] ||= []);
       m.closed=!!m.closed;
     });
   });
