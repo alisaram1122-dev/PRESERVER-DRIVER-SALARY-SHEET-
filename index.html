@@ -5,12 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Preserver Trans LLC | Payroll Pro</title>
 <link rel="stylesheet" href="styles.css">
-<link rel="stylesheet" href="styles.css">
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
 <script src="app.js" defer></script>
-
 </head>
 <body>
 
@@ -43,13 +40,16 @@
 
 <main class="main">
 <header class="topbar">
-  <div>
+  <div class="company-heading">
     <div class="eyebrow">PRESERVER TRANS LLC · USA CALIFORNIA</div>
-    <h1>Driver Payroll Pro</h1>
+    <h1 id="topCompanyName">PRESERVER TRANS LLC</h1>
+    <p>Driver Payroll Pro</p>
   </div>
+  <div class="header-truck" aria-label="Truck">🚛</div>
   <div class="manager">
     <span>ACCOUNT MANAGER</span>
     <strong id="userLabel">Saim Ali</strong>
+    <small id="topDesignation">Account Manager</small>
     <button id="logoutBtn" class="logout-btn">Log out</button>
   </div>
 </header>
@@ -59,28 +59,21 @@
     <div><h2>Driver Salary Sheets</h2><p>Manage driver profiles and monthly salary.</p></div>
     <button class="primary" id="addDriverBtn">＋ Add Driver</button>
   </div>
-
   <div class="toolbar">
     <input id="salarySearch" placeholder="Search driver, truck or date...">
     <input type="month" id="monthPicker">
   </div>
-
   <div id="driverTabs" class="driver-tabs"></div>
-
   <div id="emptyState" class="empty">
-    <h2>No driver selected</h2>
-    <p>Add a driver to create a salary sheet.</p>
+    <h2>No driver selected</h2><p>Add a driver to create a salary sheet.</p>
   </div>
 
   <div id="sheetArea" class="hidden">
     <div class="driver-heading">
       <div class="profile-heading">
         <img id="driverPhoto" class="driver-photo" alt="Driver">
-        <div>
-          <div class="eyebrow">DRIVER PAYROLL STATEMENT</div>
-          <h2 id="sheetDriverName">Driver</h2>
-          <p id="sheetPeriod"></p>
-        </div>
+        <div><div class="eyebrow">DRIVER PAYROLL STATEMENT</div>
+          <h2 id="sheetDriverName">Driver</h2><p id="sheetPeriod"></p></div>
       </div>
       <div class="heading-actions">
         <button class="secondary" id="printBtn">Print / PDF</button>
@@ -91,9 +84,7 @@
     <div class="info-grid">
       <label>DRIVER NAME<input id="driverName"></label>
       <label>TRUCK NUMBER<input id="truckNumber"></label>
-      <label>DRIVER PHOTO
-        <input type="file" id="photoInput" accept="image/*">
-      </label>
+      <label>DRIVER PHOTO<input type="file" id="photoInput" accept="image/*"></label>
       <label>MONTH<input id="monthDisplay" disabled></label>
       <label>YEAR<input id="yearDisplay" disabled></label>
     </div>
@@ -102,15 +93,11 @@
       <div><h3>Mileage & Salary</h3><p>Enter previous and new odometer miles.</p></div>
       <button class="primary small" id="addMileageBtn">＋ Add Mileage</button>
     </div>
-
     <div class="table-wrap">
-      <table>
-        <thead><tr>
-          <th>Date</th><th>Previous Miles</th><th>New Miles</th>
-          <th>Total Miles</th><th>Rate / Mile</th><th>Amount</th><th></th>
-        </tr></thead>
-        <tbody id="mileageRows"></tbody>
-      </table>
+      <table><thead><tr>
+        <th>Date</th><th>Previous Miles</th><th>New Miles</th><th>Total Miles</th>
+        <th>Rate / Mile</th><th>Amount</th><th></th>
+      </tr></thead><tbody id="mileageRows"></tbody></table>
     </div>
 
     <div class="totals-strip">
@@ -121,116 +108,72 @@
     </div>
 
     <div class="finance-grid">
-      <section class="money-card">
-        <h3>Basic Salary / Additions</h3>
-        <p>Basic salary, bonuses and other additions.</p>
-        <div id="additionRows"></div>
-        <button class="secondary small" id="addAdditionBtn">＋ Add Salary / Bonus</button>
-        <div class="sub-total">Total additions <strong id="additionTotal">$0</strong></div>
-      </section>
-
-      <section class="money-card fine-card">
-        <h3>Fines / Deductions</h3>
-        <p>Amounts deducted from driver salary.</p>
-        <div id="fineRows"></div>
-        <button class="secondary small" id="addFineBtn">＋ Add Fine</button>
-        <div class="sub-total">Total fines <strong id="fineTotal">$0</strong></div>
-      </section>
-
-      <section class="money-card">
-        <h3>Layover</h3>
-        <p>Add layover payment or deduct layover amount.</p>
-        <div id="layoverRows"></div>
-        <button class="secondary small" id="addLayoverBtn">＋ Add Layover</button>
-        <div class="sub-total">Layover total <strong id="layoverTotal">$0</strong></div>
-      </section>
-
-      <section class="money-card advance-card">
-        <h3>Driver Advances</h3>
-        <p>Cash advances given to the driver.</p>
-        <div id="advanceRows"></div>
-        <button class="secondary small" id="addAdvanceBtn">＋ Add Advance</button>
-        <div class="sub-total">Total advances <strong id="advanceTotal">$0</strong></div>
-        <div class="sub-total">Remaining advance <strong id="advanceRemaining">$0</strong></div>
-      </section>
-
-      <section class="money-card">
-        <h3>Advance Recovery</h3>
-        <p>Choose how much advance to deduct this month.</p>
-        <div id="recoveryRows"></div>
-        <button class="secondary small" id="addRecoveryBtn">＋ Add Recovery</button>
-        <div class="sub-total">Recovery total <strong id="recoveryTotal">$0</strong></div>
-      </section>
-
-      <section class="money-card">
-        <h3>Previous Salary Dues</h3>
-        <p>Previous unpaid salary automatically carries forward.</p>
-        <div class="sub-total">Previous balance <strong id="previousBalance">$0</strong></div>
-      </section>
+      <section class="money-card"><h3>Basic Salary / Additions</h3><p>Basic salary, bonuses and other additions.</p><div id="additionRows"></div><button class="secondary small" id="addAdditionBtn">＋ Add Salary / Bonus</button><div class="sub-total">Total additions <strong id="additionTotal">$0</strong></div></section>
+      <section class="money-card fine-card"><h3>Fines / Deductions</h3><p>Amounts deducted from driver salary.</p><div id="fineRows"></div><button class="secondary small" id="addFineBtn">＋ Add Fine</button><div class="sub-total">Total fines <strong id="fineTotal">$0</strong></div></section>
+      <section class="money-card"><h3>Layover</h3><p>Add layover payment or deduction.</p><div id="layoverRows"></div><button class="secondary small" id="addLayoverBtn">＋ Add Layover</button><div class="sub-total">Layover total <strong id="layoverTotal">$0</strong></div></section>
+      <section class="money-card advance-card"><h3>Driver Advances</h3><p>Cash advances given to the driver.</p><div id="advanceRows"></div><button class="secondary small" id="addAdvanceBtn">＋ Add Advance</button><div class="sub-total">Total advances <strong id="advanceTotal">$0</strong></div><div class="sub-total">Remaining advance <strong id="advanceRemaining">$0</strong></div></section>
+      <section class="money-card"><h3>Advance Recovery</h3><p>Choose how much advance to deduct.</p><div id="recoveryRows"></div><button class="secondary small" id="addRecoveryBtn">＋ Add Recovery</button><div class="sub-total">Recovery total <strong id="recoveryTotal">$0</strong></div></section>
+      <section class="money-card"><h3>Previous Salary Dues</h3><p>Previous unpaid salary automatically carries forward.</p><div class="sub-total">Previous balance <strong id="previousBalance">$0</strong></div></section>
     </div>
 
-    <div class="pay-summary">
-      <div>
-        <span>NET SALARY PAYABLE</span>
-        <small>All earnings + dues − fines − advance recovery</small>
-      </div>
-      <strong id="finalSalary">$0.00</strong>
-    </div>
-
+    <div class="pay-summary"><div><span>NET SALARY PAYABLE</span><small>All earnings + dues − fines − advance recovery</small></div><strong id="finalSalary">$0.00</strong></div>
     <div class="sheet-footer">
-      <div class="print-company">
-        <strong>PRESERVER TRANS LLC</strong>
-        <small>USA CALIFORNIA</small>
-      </div>
+      <div class="print-company"><strong id="printCompany">PRESERVER TRANS LLC</strong><small>USA CALIFORNIA</small></div>
       <div class="print-truck">🚛</div>
-      <div class="print-manager">
-        <strong id="printManager">Saim Ali</strong>
-        <small id="printDesignation">Account Manager</small>
-      </div>
+      <div class="print-manager"><strong id="printManager">Saim Ali</strong><small id="printDesignation">Account Manager</small></div>
     </div>
   </div>
 </section>
 
 <section id="historyView" class="view hidden">
-  <div class="welcome-row"><div><h2>Salary History</h2><p>Click a driver to view their previous salary sheets.</p></div></div>
-  <div class="toolbar">
-    <input id="historySearch" placeholder="Search driver, truck or date...">
-    <input type="month" id="historyMonth">
+  <div class="welcome-row"><div><h2>Driver Salary History</h2><p>Select a driver to see their complete records by date and period.</p></div></div>
+  <div class="history-controls">
+    <input id="historySearch" placeholder="Search driver or truck...">
+    <select id="historyDriver"><option value="all">All Drivers</option></select>
+    <select id="historyPeriod">
+      <option value="all">All Dates</option>
+      <option value="daily">Daily</option>
+      <option value="weekly">Weekly</option>
+      <option value="biweekly">Two Weeks</option>
+      <option value="monthly" selected>Monthly</option>
+      <option value="yearly">Yearly</option>
+      <option value="custom">Custom Date Range</option>
+    </select>
+    <input type="date" id="historyStart">
+    <input type="date" id="historyEnd">
+    <select id="historyDesign">
+      <option value="simple">Simple Cards</option>
+      <option value="circle">Circular Cards</option>
+      <option value="cube">3D Cube Cards</option>
+      <option value="columns">Column Layout</option>
+    </select>
   </div>
   <div id="historyList" class="record-list"></div>
-  <div id="historyDetail" class="hidden"></div>
+  <div id="historyDetail" class="history-detail hidden"></div>
 </section>
 
 <section id="reportsView" class="view hidden">
   <div class="welcome-row"><div><h2>Driver Reports & Analytics</h2><p>Weekly, monthly and yearly driver performance.</p></div></div>
   <div class="report-controls">
     <input id="reportSearch" placeholder="Search driver or truck...">
-    <select id="reportPeriod">
-      <option value="week">This Week</option>
-      <option value="month" selected>This Month</option>
-      <option value="year">This Year</option>
-      <option value="all">All Time</option>
-    </select>
+    <select id="reportPeriod"><option value="week">This Week</option><option value="month" selected>This Month</option><option value="year">This Year</option><option value="all">All Time</option></select>
     <input type="date" id="reportDate">
   </div>
-  <div id="reportCards" class="report-grid"></div>
-  <div id="reportList" class="table-wrap"></div>
+  <div id="reportCards" class="report-grid"></div><div id="reportList" class="table-wrap"></div>
 </section>
 
 <section id="outstandingView" class="view hidden">
   <div class="welcome-row"><div><h2>Outstanding Dues</h2><p>Unpaid driver salary and outstanding advances.</p></div></div>
-  <input id="outstandingSearch" placeholder="Search driver, truck or date...">
-  <div id="outstandingList" class="record-list"></div>
+  <input id="outstandingSearch" placeholder="Search driver, truck or date..."><div id="outstandingList" class="record-list"></div>
 </section>
 
 <section id="deletedView" class="view hidden">
   <div class="welcome-row"><div><h2>Deleted Records</h2><p>Deleted records require your password for permanent removal.</p></div></div>
-  <input id="deletedSearch" placeholder="Search deleted records...">
-  <div id="deletedList" class="record-list"></div>
+  <input id="deletedSearch" placeholder="Search deleted records..."><div id="deletedList" class="record-list"></div>
 </section>
 
 <section id="settingsView" class="view hidden">
-  <div class="welcome-row"><div><h2>Settings</h2><p>Manage payroll, account and company information.</p></div></div>
+  <div class="welcome-row"><div><h2>Settings & Personalization</h2><p>Customize payroll, colors, wallpapers and company information.</p></div></div>
   <div class="settings-grid">
     <section class="settings-card">
       <h3>Payroll Settings</h3>
@@ -246,11 +189,27 @@
       <button class="primary" id="changeAccount">Update Account</button>
     </section>
     <section class="settings-card">
-      <h3>Manager Information</h3>
+      <h3>Manager & Company Information</h3>
       <label>Manager name<input id="managerName" value="Saim Ali"></label>
       <label>Designation<input id="managerDesignation" value="Account Manager"></label>
       <label>Company name<input id="companyName" value="Preserver Trans LLC"></label>
       <button class="primary" id="saveManager">Save Manager Information</button>
+    </section>
+    <section class="settings-card">
+      <h3>Color Themes <span id="themeCount" class="count-label"></span></h3>
+      <label>Choose a color theme<select id="themePicker"></select></label>
+      <div id="themePreview" class="theme-preview"></div>
+    </section>
+    <section class="settings-card">
+      <h3>Wallpapers <span id="wallpaperCount" class="count-label"></span></h3>
+      <label>Choose background wallpaper<select id="wallpaperPicker"></select></label>
+      <div id="wallpaperPreview" class="wallpaper-preview"></div>
+    </section>
+    <section class="settings-card">
+      <h3>Record Display Design</h3>
+      <label>Default history design<select id="defaultHistoryDesign"><option value="simple">Simple Cards</option><option value="circle">Circular Cards</option><option value="cube">3D Cube Cards</option><option value="columns">Column Layout</option></select></label>
+      <p>You can also change the design directly from Salary History.</p>
+      <button class="primary" id="saveDisplaySettings">Save Display Settings</button>
     </section>
     <section class="settings-card">
       <h3>Deleted Records Security</h3>
@@ -270,11 +229,10 @@
     <h2>Create Driver Profile</h2>
     <label>Driver Name<input id="newDriverName" placeholder="Driver name"></label>
     <label>Truck Number<input id="newTruckNumber" placeholder="Truck number"></label>
-    <label>Driver Photo<input id="newDriverPhoto" type="file" accept="image/*"></label>
+    <label>Driver Photo (Maximum 2 MB)<input id="newDriverPhoto" type="file" accept="image/*"></label>
     <button class="primary full" id="createDriver">Create Driver</button>
   </div>
 </div>
-
 <div id="toast" class="toast"></div>
 </body>
 </html>
