@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Preserver Trans LLC | Driver Salary</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Preserver Trans LLC | Driver Payroll</title>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -14,23 +15,16 @@
     <div class="brand-name dark-brand">PRESERVER <span>TRANS LLC</span></div>
     <div class="eyebrow">SECURE PAYROLL ACCESS</div>
     <h1>Driver Salary Portal</h1>
-    <p>Sign in to access your salary records from any computer.</p>
+    <p>Sign in to manage driver profiles and salary records.</p>
     <div id="authMessage" class="auth-message"></div>
-
-    <label>USERNAME / EMAIL
-      <input id="authEmail" type="email" placeholder="Enter your account email" autocomplete="username">
+    <label>EMAIL
+      <input id="authEmail" type="email" placeholder="Email address">
     </label>
-
     <label>PASSWORD
-      <input id="authPassword" type="password" placeholder="Enter password" autocomplete="current-password">
+      <input id="authPassword" type="password" placeholder="Password">
     </label>
-
-    <button class="primary login-submit" id="loginBtn">Login</button>
-    <button class="secondary login-submit" id="signupBtn">Create Account</button>
-
-    <div class="login-note">
-      Your account is secured by Supabase authentication. Use the same account on every computer.
-    </div>
+    <button class="primary full" id="loginBtn">Login</button>
+    <button class="secondary full" id="signupBtn">Create Account</button>
   </div>
 </div>
 
@@ -40,36 +34,36 @@
     <div class="brand-name">PRESERVER <span>TRANS LLC</span></div>
 
     <div class="side-label">WORKSPACE</div>
-
-    <button class="nav active" id="navSalary">▦ &nbsp; Salary Sheets</button>
-    <button class="nav" id="navSettings">⚙ &nbsp; Settings</button>
+    <button class="nav active" id="navSalary">▦ Salary Sheets</button>
+    <button class="nav" id="navOutstanding">＄ Outstanding Dues</button>
+    <button class="nav" id="navHistory">▤ Payment History</button>
+    <button class="nav" id="navSettings">⚙ Settings</button>
 
     <div class="side-bottom">
-      <span class="online-dot"></span> Local database active
-      <br>
-      <small>Saved on this device</small>
+      <span class="online-dot"></span> Cloud database
+      <small>Records synchronized</small>
     </div>
   </aside>
 
   <main class="main">
     <header class="topbar">
       <div>
-        <div class="eyebrow">PAYROLL MANAGEMENT</div>
-        <h1>Driver Salary Management</h1>
+        <div class="eyebrow">PRESERVER TRANS LLC · USA CALIFORNIA</div>
+        <h1 id="companyHeading">Driver Salary Management</h1>
       </div>
-
       <div class="manager">
-        <span>ACCOUNT MANAGER · SAIM ALI</span>
-        <strong id="userLabel">Signed in</strong>
+        <span>ACCOUNT MANAGER</span>
+        <strong id="userLabel">Saim Ali</strong>
         <button class="logout-btn" id="logoutBtn">Log out</button>
       </div>
     </header>
 
+    <!-- SALARY SHEETS -->
     <section id="salaryView">
       <div class="welcome-row">
         <div>
-          <h2>Salary workspace</h2>
-          <p>Manage mileage, driver earnings, deductions and fines.</p>
+          <h2>Driver Profiles</h2>
+          <p>Select a driver to open their permanent salary profile.</p>
         </div>
         <button class="primary" id="addDriverBtn">＋ Add Driver</button>
       </div>
@@ -77,7 +71,7 @@
       <div class="toolbar">
         <div class="driver-tabs" id="driverTabs"></div>
         <div class="period-controls">
-          <label>MONTH
+          <label>SELECT MONTH
             <input type="month" id="monthPicker">
           </label>
         </div>
@@ -85,49 +79,79 @@
 
       <div id="emptyState" class="empty hidden">
         <div class="empty-icon">＋</div>
-        <h3>No driver added yet</h3>
-        <p>Add your first driver to create a salary sheet.</p>
-        <button class="primary" id="emptyAddBtn">Add First Driver</button>
+        <h3>No driver profiles</h3>
+        <p>Add your first driver to start salary management.</p>
+        <button class="primary" id="emptyAddBtn">Add Driver</button>
       </div>
 
-      <div id="sheetArea">
+      <div id="sheetArea" class="hidden">
         <div class="driver-heading">
-          <div>
-            <div class="eyebrow">DRIVER PAYROLL STATEMENT</div>
-            <h2 id="sheetDriverName">Driver</h2>
-            <p id="sheetPeriod"></p>
+          <div class="profile-heading">
+            <img id="profilePreview" class="profile-photo" alt="Driver photo">
+            <div>
+              <div class="eyebrow">PERMANENT DRIVER PROFILE</div>
+              <h2 id="sheetDriverName">Driver Name</h2>
+              <p id="sheetPeriod"></p>
+            </div>
           </div>
-
           <div class="heading-actions">
-            <button class="secondary" id="printBtn">⇩ Print / Save PDF</button>
-            <button class="danger-outline" id="deleteDriverBtn">Delete Driver</button>
+            <button class="secondary" id="printBtn">Print / Save PDF</button>
           </div>
         </div>
 
-        <div class="info-grid">
-          <label>DRIVER NAME
-            <input id="driverName" placeholder="Driver name">
-          </label>
+        <div class="profile-card">
+          <div class="photo-upload">
+            <img id="profileLarge" class="profile-photo large" alt="Driver photo">
+            <label class="upload-button">
+              Upload Driver Photo
+              <input type="file" id="photoInput" accept="image/*">
+            </label>
+          </div>
 
-          <label>TRUCK NUMBER
-            <input id="truckNumber" placeholder="e.g. 7867">
-          </label>
+          <div class="profile-fields">
+            <label>DRIVER NAME
+              <input id="driverName" placeholder="Driver name">
+            </label>
+            <label>TRUCK NUMBER
+              <input id="truckNumber" placeholder="Truck number">
+            </label>
+            <label>PHONE NUMBER
+              <input id="driverPhone" placeholder="Driver phone">
+            </label>
+            <label>ADDRESS
+              <input id="driverAddress" placeholder="Driver address">
+            </label>
+            <label class="wide">NOTES
+              <input id="driverNotes" placeholder="Additional driver information">
+            </label>
+          </div>
+        </div>
 
-          <label>MONTH
-            <input id="monthDisplay" disabled>
-          </label>
-
-          <label>YEAR
-            <input id="yearDisplay" disabled>
-          </label>
+        <div class="quick-stats">
+          <div class="stat-card">
+            <span>LAST RECORDED MILES</span>
+            <strong id="lastMiles">0</strong>
+          </div>
+          <div class="stat-card">
+            <span>CURRENT MONTH MILES</span>
+            <strong id="currentMiles">0</strong>
+          </div>
+          <div class="stat-card">
+            <span>PREVIOUS UNPAID DUES</span>
+            <strong id="previousDues">$0.00</strong>
+          </div>
+          <div class="stat-card gold-stat">
+            <span>TOTAL OUTSTANDING</span>
+            <strong id="driverOutstanding">$0.00</strong>
+          </div>
         </div>
 
         <div class="section-title">
           <div>
-            <h3>Mileage & Salary Calculation</h3>
-            <p>Enter previous and new odometer miles. Difference calculates automatically.</p>
+            <h3>Mileage & Salary Sheet</h3>
+            <p>Previous miles are filled automatically from the driver's last entry.</p>
           </div>
-          <button class="primary small" id="addMileageBtn">＋ Add Mileage Row</button>
+          <button class="primary small" id="addMileageBtn">＋ Add Mileage</button>
         </div>
 
         <div class="table-wrap">
@@ -139,7 +163,7 @@
                 <th>NEW MILES</th>
                 <th>MILES DIFFERENCE</th>
                 <th>RATE / MILE</th>
-                <th>AMOUNT (USD)</th>
+                <th>AMOUNT</th>
                 <th></th>
               </tr>
             </thead>
@@ -148,181 +172,230 @@
         </div>
 
         <div class="totals-strip">
-          <div>
-            <span>TOTAL PREVIOUS MILES</span>
-            <strong id="totalPrev">0</strong>
-          </div>
-          <div>
-            <span>TOTAL NEW MILES</span>
-            <strong id="totalNew">0</strong>
-          </div>
-          <div>
-            <span>TOTAL MILES</span>
-            <strong id="totalMiles">0</strong>
-          </div>
-          <div class="highlight">
-            <span>MILEAGE EARNINGS</span>
-            <strong id="mileageTotal">$0.00</strong>
-          </div>
+          <div><span>PREVIOUS MILES</span><strong id="totalPrev">0</strong></div>
+          <div><span>NEW MILES</span><strong id="totalNew">0</strong></div>
+          <div><span>TOTAL MILES</span><strong id="totalMiles">0</strong></div>
+          <div class="highlight"><span>MILEAGE EARNINGS</span><strong id="mileageTotal">$0.00</strong></div>
         </div>
 
         <div class="bottom-grid">
           <section class="money-card">
             <div class="section-title compact">
-              <div>
-                <h3>Salary Additions</h3>
-                <p>Add any amount you want to increase the driver’s salary.</p>
-              </div>
-              <button class="secondary small" id="addDeductionBtn">＋ Add</button>
+              <div><h3>Salary Additions</h3><p>Extra salary amounts.</p></div>
+              <button class="secondary small" id="addAdditionBtn">＋ Add</button>
             </div>
-            <div id="deductionRows"></div>
-            <div class="sub-total">
-              <span>Total added</span>
-              <strong id="deductionTotal">$0.00</strong>
-            </div>
+            <div id="additionRows"></div>
+            <div class="sub-total"><span>Total additions</span><strong id="additionTotal">$0.00</strong></div>
           </section>
 
           <section class="money-card fine-card">
             <div class="section-title compact">
-              <div>
-                <h3>Fines</h3>
-                <p>These amounts are SUBTRACTED from salary.</p>
-              </div>
+              <div><h3>Fines / Deductions</h3><p>Amounts deducted from salary.</p></div>
               <button class="secondary small" id="addFineBtn">＋ Add Fine</button>
             </div>
             <div id="fineRows"></div>
-            <div class="sub-total">
-              <span>Total fines</span>
-              <strong id="fineTotal">$0.00</strong>
-            </div>
+            <div class="sub-total"><span>Total fines</span><strong id="fineTotal">$0.00</strong></div>
           </section>
-        </div>
 
-        <div class="bottom-grid finance-grid">
-          <section class="money-card advance-card">
+          <section class="money-card">
             <div class="section-title compact">
-              <div>
-                <h3>Driver Advances</h3>
-                <p>Record cash advances given to the driver. These are not salary earnings.</p>
-              </div>
+              <div><h3>Driver Advances</h3><p>Cash advances given to driver.</p></div>
               <button class="secondary small" id="addAdvanceBtn">＋ Add Advance</button>
             </div>
             <div id="advanceRows"></div>
-            <div class="sub-total">
-              <span>Total advances taken</span>
-              <strong id="advanceTotal">$0.00</strong>
-            </div>
-            <div class="sub-total balance-line">
-              <span>Outstanding advance balance</span>
-              <strong id="advanceBalance">$0.00</strong>
-            </div>
+            <div class="sub-total"><span>Total advances</span><strong id="advanceTotal">$0.00</strong></div>
           </section>
 
-          <section class="money-card repayment-card">
+          <section class="money-card">
             <div class="section-title compact">
-              <div>
-                <h3>Advance Recovery</h3>
-                <p>Amount deducted from salary to repay advances.</p>
-              </div>
+              <div><h3>Advance Recovery</h3><p>Advance deducted from salary.</p></div>
               <button class="secondary small" id="addRecoveryBtn">＋ Add Recovery</button>
             </div>
             <div id="recoveryRows"></div>
-            <div class="sub-total">
-              <span>Total advance deducted</span>
-              <strong id="recoveryTotal">$0.00</strong>
-            </div>
+            <div class="sub-total"><span>Total recovery</span><strong id="recoveryTotal">$0.00</strong></div>
           </section>
         </div>
 
-        <section class="money-card payment-card">
-          <div class="section-title compact">
-            <div>
-              <h3>Salary Payments</h3>
-              <p>Record salary already paid. Remaining balance is calculated automatically.</p>
-            </div>
-            <button class="secondary small" id="addPaymentBtn">＋ Add Payment</button>
-          </div>
-
-          <div id="paymentRows"></div>
-
-          <div class="payment-totals">
-            <div>
-              <span>TOTAL PAID</span>
-              <strong id="paidTotal">$0.00</strong>
-            </div>
-            <div>
-              <span>REMAINING SALARY</span>
-              <strong id="salaryBalance">$0.00</strong>
-            </div>
-          </div>
-        </section>
-
         <div class="pay-summary">
           <div>
-            <span>FINAL SALARY</span>
-            <small>Mileage earnings + added amounts − fines</small>
+            <span>CURRENT MONTH SALARY</span>
+            <small>Mileage + additions − fines − advance recovery</small>
           </div>
           <strong id="finalSalary">$0.00</strong>
         </div>
 
+        <div class="money-card due-card">
+          <div class="section-title compact">
+            <div>
+              <h3>Driver Due Payment</h3>
+              <p>Enter the amount you are paying. The outstanding balance will reduce automatically.</p>
+            </div>
+          </div>
+          <div class="due-payment-row">
+            <div>
+              <span>TOTAL UNPAID BALANCE</span>
+              <strong id="dueBoxBalance">$0.00</strong>
+            </div>
+            <label>PAYMENT AMOUNT
+              <input type="number" min="0" step="0.01" id="duePaymentAmount" placeholder="Enter amount">
+            </label>
+            <label>PAYMENT NOTE
+              <input id="duePaymentNote" placeholder="Cash / Check / Bank / Note">
+            </label>
+            <button class="pay-button" id="payDueBtn">✓ PAY NOW</button>
+          </div>
+        </div>
+
         <div class="sheet-footer">
-          <span>Preserver Trans LLC · USA California</span>
+          <span id="footerCompany">Preserver Trans LLC · USA California</span>
           <span>Prepared by Account Manager: Saim Ali</span>
         </div>
       </div>
     </section>
 
-    <section id="settingsView" class="hidden">
+    <!-- OUTSTANDING -->
+    <section id="outstandingView" class="hidden">
       <div class="welcome-row">
         <div>
-          <h2>Settings</h2>
-          <p>Set the default mileage rate for all new mileage rows.</p>
+          <h2>Outstanding Salary</h2>
+          <p>All drivers with unpaid salary balances.</p>
         </div>
       </div>
-
-      <div class="settings-card">
-        <div class="setting-icon">＄</div>
-        <div>
-          <h3>Default pay rate</h3>
-          <p>Default rate is 52 US cents per mile ($0.52). Change it any time.</p>
-
-          <label class="rate-label">RATE PER MILE (USD)
-            <div class="rate-input">
-              <span>$</span>
-              <input id="defaultRate" type="number" min="0" step="0.01">
-            </div>
-          </label>
-
-          <button class="primary" id="saveSettings">Save Settings</button>
-          <p class="note">Changing the default rate applies to new rows only. Existing rows keep their saved rate.</p>
-        </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>DRIVER</th>
+              <th>TRUCK</th>
+              <th>LAST MILES</th>
+              <th>TOTAL EARNED</th>
+              <th>TOTAL PAID</th>
+              <th>OUTSTANDING</th>
+              <th>ACTION</th>
+            </tr>
+          </thead>
+          <tbody id="outstandingRows"></tbody>
+        </table>
       </div>
     </section>
 
-    <footer class="app-footer">
-      PRESERVER TRANS LLC <span>•</span> DRIVER PAYROLL SYSTEM <span>•</span> v1.0
-    </footer>
+    <!-- PAYMENT HISTORY -->
+    <section id="historyView" class="hidden">
+      <div class="welcome-row">
+        <div>
+          <h2>Payment & Salary History</h2>
+          <p>Every payment is saved with the driver's salary statement.</p>
+        </div>
+        <button class="secondary" id="printHistoryBtn">Print History</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>PAYMENT DATE</th>
+              <th>DRIVER</th>
+              <th>TRUCK</th>
+              <th>SALARY MONTH</th>
+              <th>PREVIOUS MILES</th>
+              <th>NEW MILES</th>
+              <th>MONTH SALARY</th>
+              <th>PAYMENT</th>
+              <th>REMAINING DUE</th>
+              <th>STATUS</th>
+            </tr>
+          </thead>
+          <tbody id="historyRows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section id="settingsView" class="hidden">
+      <div class="welcome-row">
+        <div>
+          <h2>System Settings</h2>
+          <p>Manage salary, company, mileage and payment preferences.</p>
+        </div>
+      </div>
+
+      <div class="settings-grid">
+        <section class="settings-card">
+          <h3>Company Information</h3>
+          <label>COMPANY NAME<input id="settingCompany"></label>
+          <label>ACCOUNT MANAGER<input id="settingManager"></label>
+          <label>COMPANY LOCATION<input id="settingLocation"></label>
+        </section>
+
+        <section class="settings-card">
+          <h3>Salary Settings</h3>
+          <label>DEFAULT RATE PER MILE (USD)<input type="number" min="0" step="0.01" id="defaultRate"></label>
+          <label>CURRENCY
+            <select id="settingCurrency">
+              <option value="USD">USD - US Dollar</option>
+              <option value="CAD">CAD - Canadian Dollar</option>
+              <option value="PKR">PKR - Pakistani Rupee</option>
+            </select>
+          </label>
+          <label>MILE DECIMAL PLACES
+            <select id="settingDecimals">
+              <option value="0">Whole miles</option>
+              <option value="1">1 decimal</option>
+              <option value="2">2 decimals</option>
+            </select>
+          </label>
+        </section>
+
+        <section class="settings-card">
+          <h3>Mileage & Payment Preferences</h3>
+          <label>DEFAULT PAYMENT METHOD
+            <select id="settingPaymentMethod">
+              <option>Cash</option>
+              <option>Bank Transfer</option>
+              <option>Check</option>
+              <option>Zelle</option>
+              <option>Other</option>
+            </select>
+          </label>
+          <label>DEFAULT ADDITION DESCRIPTION<input id="settingAddition"></label>
+          <label>DEFAULT FINE DESCRIPTION<input id="settingFine"></label>
+          <label>DEFAULT ADVANCE DESCRIPTION<input id="settingAdvance"></label>
+        </section>
+
+        <section class="settings-card">
+          <h3>System Options</h3>
+          <label class="check-setting">
+            <input type="checkbox" id="settingAutoMiles">
+            Automatically use previous recorded miles
+          </label>
+          <label class="check-setting">
+            <input type="checkbox" id="settingConfirmPay">
+            Ask confirmation before payment
+          </label>
+          <label class="check-setting">
+            <input type="checkbox" id="settingShowZero">
+            Show drivers with zero outstanding balance
+          </label>
+          <p class="note">Driver profiles and salary history are retained when payments are made.</p>
+        </section>
+      </div>
+      <button class="primary save-settings" id="saveSettings">Save All Settings</button>
+    </section>
+
+    <footer class="app-footer">PRESERVER TRANS LLC · DRIVER PAYROLL SYSTEM</footer>
   </main>
 </div>
 
+<!-- ADD DRIVER -->
 <div class="modal hidden" id="driverModal">
   <div class="modal-box">
     <button class="modal-close" id="closeModal">×</button>
-    <div class="eyebrow">NEW PAYROLL PROFILE</div>
+    <div class="eyebrow">NEW DRIVER PROFILE</div>
     <h2>Add Driver</h2>
-    <p>Create a separate salary sheet for each driver.</p>
-
-    <label>DRIVER NAME
-      <input id="newDriverName" placeholder="Enter driver name">
-    </label>
-
-    <label>TRUCK NUMBER
-      <input id="newTruckNumber" placeholder="Enter truck number">
-    </label>
-
+    <label>DRIVER NAME<input id="newDriverName" placeholder="Driver name"></label>
+    <label>TRUCK NUMBER<input id="newTruckNumber" placeholder="Truck number"></label>
     <div class="modal-actions">
       <button class="secondary" id="cancelDriver">Cancel</button>
-      <button class="primary" id="createDriver">Create Driver Sheet</button>
+      <button class="primary" id="createDriver">Create Profile</button>
     </div>
   </div>
 </div>
@@ -332,6 +405,5 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
 <script src="app.js"></script>
-
 </body>
 </html>
