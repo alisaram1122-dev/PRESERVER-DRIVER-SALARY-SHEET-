@@ -1,175 +1,112 @@
 
-<!-- index.html -->
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Preserver Trans LLC | Payroll Pro</title>
-<link rel="stylesheet" href="styles.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase-config.js"></script>
-</head>
-<body>
-<div id="loginScreen" class="login-screen">
-  <div class="login-glow"></div>
-  <div class="login-card">
-    <div class="login-logo">
-      <svg viewBox="0 0 120 80"><path d="M5 12h70v48H5zM75 28h23l17 18v14H75z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/><path d="M84 33v13h22L94 33z" fill="currentColor"/><circle cx="29" cy="64" r="11" fill="#101a2b" stroke="currentColor" stroke-width="5"/><circle cx="95" cy="64" r="11" fill="#101a2b" stroke="currentColor" stroke-width="5"/><path d="M15 25h48M15 36h37" stroke="currentColor" stroke-width="4"/></svg>
-    </div>
-    <div class="login-company">PRESERVER TRANS</div>
-    <div class="login-llc">LLC · USA CALIFORNIA</div>
-    <div class="login-line"></div>
-    <h1>Payroll Management</h1>
-    <p class="login-caption">Secure Driver Salary & Fleet Records</p>
-    <div id="loginMessage" class="message"></div>
-    <form id="loginForm">
-      <label>Email Address</label>
-      <input id="loginEmail" type="email" placeholder="Enter your email" required>
-      <label>Password</label>
-      <input id="loginPassword" type="password" placeholder="Enter your password" required>
-      <button class="btn primary full login-submit">Sign In to Dashboard <span>→</span></button>
-    </form>
-    <div class="login-or">SECURE ACCOUNT ACCESS</div>
-    <button class="btn outline full" id="showSignup">Create New Account</button>
-    <form id="signupForm" class="hidden">
-      <label>Full Name</label><input id="signupName" required placeholder="Your name">
-      <label>Email Address</label><input id="signupEmail" type="email" required placeholder="Your email">
-      <label>Password</label><input id="signupPassword" type="password" minlength="6" required placeholder="At least 6 characters">
-      <button class="btn primary full">Create Account</button>
-      <button class="btn text-btn full" type="button" id="showLogin">Back to Login</button>
-    </form>
-    <div class="login-footer">PRESERVER TRANS LLC <span>•</span> PROFESSIONAL FLEET PAYROLL</div>
-  </div>
-</div>
-
-<div id="app" class="app hidden">
-<aside class="sidebar" id="sidebar">
-  <div class="side-brand">
-    <div class="side-logo"><svg viewBox="0 0 100 70"><path d="M4 10h58v42H4zM62 25h18l16 17v10H62z" fill="none" stroke="currentColor" stroke-width="5"/><circle cx="23" cy="55" r="9" fill="#101a2b" stroke="currentColor" stroke-width="4"/><circle cx="79" cy="55" r="9" fill="#101a2b" stroke="currentColor" stroke-width="4"/></svg></div>
-    <div><strong>PRESERVER TRANS</strong><small>PAYROLL PRO · LLC</small></div>
-  </div>
-  <div class="nav-label">WORKSPACE</div>
-  <button class="nav-btn active" data-view="salaryView">▦ <span>Salary Sheets</span></button>
-  <button class="nav-btn" data-view="historyView">◷ <span>Salary History</span></button>
-  <button class="nav-btn" data-view="duesView">＄ <span>Outstanding Dues</span></button>
-  <button class="nav-btn" data-view="paymentsView">▤ <span>Payment History</span></button>
-  <button class="nav-btn" data-view="deletedView">▣ <span>Deleted Records</span><b id="deletedCount">0</b></button>
-  <div class="nav-label">FLEET REPORTS</div>
-  <button class="nav-btn" data-view="analyticsView">▥ <span>Driver Performance</span></button>
-  <button class="nav-btn" data-view="driversView">♙ <span>Drivers</span></button>
-  <div class="nav-label">PREFERENCES</div>
-  <button class="nav-btn" data-view="settingsView">⚙ <span>Settings & Themes</span></button>
-  <div class="sidebar-bottom">
-    <div class="manager-mini"><div class="mini-avatar" id="sideAvatar">SA</div><div><b id="sideManagerName">Saim Ali</b><small>Account Manager</small></div></div>
-    <button class="nav-btn logout-btn" id="logoutBtn">↪ <span>Sign Out</span></button>
-  </div>
-</aside>
-
-<main class="main-area">
-<header class="topbar">
-  <div class="top-left"><button id="menuToggle" class="menu-toggle">☰</button><div><b id="topCompany">PRESERVER TRANS LLC</b><small id="pageTitle">Salary Sheets</small></div></div>
-  <div class="top-user"><i></i><span id="topUsername">Saim Ali</span></div>
-</header>
-<div class="content">
-
-<section id="salaryView" class="view active-view">
-  <div class="section-heading"><div><h1>Driver Salary Management</h1><p>Monthly mileage, previous balance, advances and payments.</p></div><button class="btn primary" id="addDriverBtn">＋ Add Driver</button></div>
-  <div class="toolbar">
-    <div class="field"><label>Select Driver</label><select id="salaryDriver"></select></div>
-    <div class="field"><label>Salary Month</label><input type="month" id="salaryMonth"></div>
-    <div class="field"><label>Mileage Rate ($)</label><input type="number" id="mileageRate" min="0" step=".01"></div>
-    <button class="btn outline" id="printSalaryBtn">Print Statement</button>
-  </div>
-  <div class="driver-banner" id="salaryDriverInfo"></div>
-  <div class="stats-grid">
-    <div class="stat-card"><span>New Miles This Month</span><strong id="statMiles">0</strong></div>
-    <div class="stat-card"><span>Current Month Salary</span><strong id="statMileage">$0.00</strong></div>
-    <div class="stat-card"><span>Previous Balance Due</span><strong id="statPreviousDue">$0.00</strong></div>
-    <div class="stat-card highlight"><span>Total Amount Due</span><strong id="statDue">$0.00</strong></div>
-  </div>
-  <div class="stats-grid second-stats">
-    <div class="stat-card"><span>Advance Given</span><strong id="statAdvance">$0.00</strong></div>
-    <div class="stat-card"><span>Advance Recovered</span><strong id="statRecovered">$0.00</strong></div>
-    <div class="stat-card"><span>Remaining Advance</span><strong id="statAdvanceBalance">$0.00</strong></div>
-    <div class="stat-card"><span>Paid This Month</span><strong id="statPaid">$0.00</strong></div>
-  </div>
-
-  <div class="panel">
-    <div class="panel-heading"><div><h2>Monthly Mileage Record</h2><p>Previous miles are carried forward automatically. Enter only new miles.</p></div><button class="btn small primary" id="addMileageBtn">＋ Add New Miles</button></div>
-    <div class="table-wrap"><table><thead><tr><th>#</th><th>Date</th><th>Load / Notes</th><th>Previous Miles</th><th>New Miles</th><th>Ending Miles</th><th>Rate</th><th>Pay</th><th>Action</th></tr></thead><tbody id="mileageBody"></tbody></table></div>
-  </div>
-
-  <div class="two-column">
-    <div class="panel"><div class="panel-heading"><div><h2>Extra Amounts / Bonus</h2><p>Additional earnings.</p></div><button class="btn small primary" id="addAdditionBtn">＋ Add</button></div><div class="table-wrap"><table><thead><tr><th>Description</th><th>Amount</th><th>Action</th></tr></thead><tbody id="additionsBody"></tbody></table></div></div>
-    <div class="panel"><div class="panel-heading"><div><h2>Fines / Deductions</h2><p>Driver fines and deductions.</p></div><button class="btn small primary" id="addFineBtn">＋ Add</button></div><div class="table-wrap"><table><thead><tr><th>Description</th><th>Amount</th><th>Action</th></tr></thead><tbody id="finesBody"></tbody></table></div></div>
-  </div>
-
-  <div class="two-column">
-    <div class="panel">
-      <div class="panel-heading"><div><h2>Driver Advance</h2><p>Give an advance or recover any amount.</p></div></div>
-      <div class="advance-form"><input id="advanceAmount" type="number" min="0" step=".01" placeholder="Advance amount"><input id="advanceNote" placeholder="Reason / note"><button class="btn primary" id="giveAdvanceBtn">Give Advance</button></div>
-      <div class="advance-form"><input id="recoverAmount" type="number" min="0" step=".01" placeholder="Recovery amount"><input id="recoverNote" placeholder="Recovery note"><button class="btn outline" id="recoverAdvanceBtn">Deduct Advance</button></div>
-      <div id="advanceBalanceInfo" class="balance-info"></div>
-      <div class="table-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>Note</th><th>Amount</th></tr></thead><tbody id="advanceLedgerBody"></tbody></table></div>
-    </div>
-    <div class="panel">
-      <div class="panel-heading"><div><h2>Pay Driver</h2><p>Record cash, check, bank transfer or another payment method.</p></div></div>
-      <label>Payment Amount</label><input type="number" id="paymentAmount" min="0" step=".01" placeholder="Enter amount">
-      <label>Payment Method</label><select id="paymentMethod"><option>Bank Transfer</option><option>Check</option><option>Cash</option><option>Zelle</option><option>Other</option></select>
-      <label>Check / Transfer Reference</label><input id="paymentReference" placeholder="Check number / transfer ID (optional)">
-      <label>Payment Date</label><input type="date" id="paymentDate">
-      <label>Payment Note</label><input id="paymentNote" placeholder="Additional details">
-      <button class="btn primary full pay-button" id="recordPaymentBtn">✓ Pay Driver & Save Receipt</button>
-      <div class="payment-summary" id="paymentSummary"></div>
-    </div>
-  </div>
-  <div class="panel totals-panel"><div class="panel-heading"><div><h2>Salary Summary</h2><p>Previous balance is included in the total due.</p></div></div><div id="salaryTotals"></div><div class="save-row"><span id="saveStatus">Changes save automatically.</span><button class="btn primary" id="saveNowBtn">Save Changes</button></div></div>
-</section>
-
-<section id="historyView" class="view">
-  <div class="section-heading"><div><h1>Salary History</h1><p>Open any driver's complete saved monthly statement.</p></div></div>
-  <div class="panel"><div class="panel-heading"><h2>Monthly Salary Sheets</h2><input id="historySearch" class="search-input" placeholder="Search driver or month"></div><div class="table-wrap"><table><thead><tr><th>Driver</th><th>Truck</th><th>Month</th><th>Miles</th><th>Salary</th><th>Paid</th><th>Remaining</th><th>Open</th></tr></thead><tbody id="historyBody"></tbody></table></div></div>
-</section>
-
-<section id="statementView" class="view">
-  <div class="section-heading"><div><h1>Salary Statement</h1><p id="statementSubtitle">Read-only record</p></div><div class="button-row"><button class="btn outline" id="statementPrintBtn">Print</button><button class="btn danger" id="deleteStatementBtn">Delete</button><button class="btn outline" id="backHistoryBtn">← Back</button></div></div>
-  <div id="statementContent" class="statement-paper"></div>
-</section>
-
-<section id="duesView" class="view"><div class="section-heading"><div><h1>Outstanding Dues</h1><p>Unpaid salary balances by driver.</p></div></div><div class="panel"><div class="table-wrap"><table><thead><tr><th>Driver</th><th>Truck</th><th>Unpaid Months</th><th>Total Due</th><th>Action</th></tr></thead><tbody id="duesBody"></tbody></table></div></div></section>
-
-<section id="paymentsView" class="view"><div class="section-heading"><div><h1>Payment History</h1><p>Every payment receipt, payment method and reference.</p></div></div><div class="panel"><div class="table-wrap"><table><thead><tr><th>Date</th><th>Driver</th><th>Month</th><th>Amount</th><th>Method</th><th>Reference</th><th>Note</th></tr></thead><tbody id="paymentsBody"></tbody></table></div></div></section>
-
-<section id="deletedView" class="view"><div class="section-heading"><div><h1>Deleted Records</h1><p>Restore records or permanently delete after password verification.</p></div></div><div class="warning-note">Permanent deletion cannot be undone.</div><div class="panel"><div class="table-wrap"><table><thead><tr><th>Driver</th><th>Month</th><th>Deleted On</th><th>Actions</th></tr></thead><tbody id="deletedBody"></tbody></table></div></div></section>
-
-<section id="analyticsView" class="view">
-  <div class="section-heading"><div><h1>Driver Performance Report</h1><p>Compare mileage, salary, fines, advances and payments.</p></div><button class="btn outline" id="printAnalyticsBtn">Print Report</button></div>
-  <div class="toolbar"><div class="field"><label>Report Period</label><select id="analyticsPeriod"><option value="all">All Records</option><option value="year">This Year</option><option value="month">Selected Month</option></select></div><div class="field"><label>Month</label><input type="month" id="analyticsMonth"></div><div class="field"><label>Report Layout</label><select id="reportLayout"><option value="table">Detailed Table</option><option value="cards">Driver Cards</option><option value="compact">Compact Rows</option><option value="wide">Wide Table</option></select></div><div class="field"><label>Report Color</label><select id="reportColor"><option value="gold">Gold</option><option value="blue">Blue</option><option value="green">Green</option><option value="purple">Purple</option><option value="red">Red</option><option value="slate">Slate</option></select></div></div>
-  <div class="report-controls panel"><b>Show / Hide Columns</b><div id="columnChoices" class="column-choices"></div><button class="btn small outline" id="resetColumnsBtn">Reset Columns</button></div>
-  <div id="analyticsContent"></div>
-  <div id="driverDetail" class="panel hidden"></div>
-</section>
-
-<section id="driversView" class="view"><div class="section-heading"><div><h1>Driver Profiles</h1><p>Permanent driver records and profile pictures.</p></div><button class="btn primary" id="addDriverBtn2">＋ Add Driver</button></div><div class="panel"><div class="table-wrap"><table><thead><tr><th>Photo</th><th>Driver</th><th>Truck</th><th>Phone</th><th>Address</th></tr></thead><tbody id="driversBody"></tbody></table></div></div></section>
-
-<section id="settingsView" class="view">
-  <div class="section-heading"><div><h1>Settings & Personalization</h1><p>Customize the payroll workspace and account.</p></div></div>
-  <div class="settings-grid">
-    <div class="panel"><h2>Account Settings</h2><label>Display Username</label><input id="settingUsername"><button class="btn primary full" id="saveUsernameBtn">Save Username</button><label>Login Email</label><input id="settingEmail" disabled><div class="divider"></div><h3>Change Password</h3><label>Current Password</label><input id="currentPassword" type="password"><label>New Password</label><input id="newPassword" type="password"><label>Confirm Password</label><input id="confirmPassword" type="password"><button class="btn primary full" id="changePasswordBtn">Update Password</button></div>
-    <div class="panel"><h2>Account Manager Profile</h2><div class="manager-profile"><div id="managerPhotoPreview" class="manager-photo">SA</div><div><label>Profile Picture</label><input id="managerPhoto" type="file" accept="image/*"></div></div><label>Manager Name</label><input id="managerName"><label>Designation</label><input id="managerDesignation"><label>Phone</label><input id="managerPhone"><label>About Manager</label><textarea id="managerDetails"></textarea><label>Verify Login Password</label><input id="managerVerifyPassword" type="password"><button class="btn primary full" id="saveManagerBtn">Verify & Save Profile</button></div>
-    <div class="panel"><h2>Company & Payroll</h2><label>Company Name</label><input id="settingCompany"><label>Location</label><input id="settingLocation"><label>Default Mileage Rate</label><input id="settingRate" type="number" step=".01"><label>Currency</label><select id="settingCurrency"><option value="$">USD ($)</option><option value="£">GBP (£)</option><option value="€">EUR (€)</option></select><button class="btn primary full" id="saveCompanyBtn">Save Company Settings</button></div>
-    <div class="panel"><h2>Workspace Themes</h2><p class="muted">Choose your preferred professional design.</p><div id="themeChoices" class="theme-grid">
-      <button data-theme="navy" class="theme-choice">Navy Gold</button><button data-theme="black" class="theme-choice">Black Gold</button><button data-theme="blue" class="theme-choice">Ocean Blue</button><button data-theme="purple" class="theme-choice">Royal Purple</button><button data-theme="green" class="theme-choice">Emerald Green</button><button data-theme="red" class="theme-choice">Crimson Red</button><button data-theme="light" class="theme-choice">Clean Light</button><button data-theme="slate" class="theme-choice">Slate Grey</button><button data-theme="teal" class="theme-choice">Modern Teal</button><button data-theme="brown" class="theme-choice">Chocolate Gold</button><button data-theme="orange" class="theme-choice">Sunset Orange</button><button data-theme="rose" class="theme-choice">Rose Pink</button>
-    </div><label>Panel Design</label><select id="displayStyle"><option value="modern">Modern Professional</option><option value="compact">Compact Spreadsheet</option><option value="rounded">Extra Rounded</option><option value="sharp">Sharp Corporate</option></select><label>Font Size</label><select id="fontSize"><option value="normal">Normal</option><option value="large">Large</option><option value="small">Small</option></select><label>Sidebar Style</label><select id="sidebarStyle"><option value="gradient">Gradient</option><option value="solid">Solid</option><option value="soft">Soft</option></select><button class="btn primary full" id="saveThemeBtn">Save & Apply Design</button></div>
-  </div>
-</section>
-</div>
-</main>
-</div>
-
-<div id="driverModal" class="modal hidden"><div class="modal-card"><div class="modal-title"><h2>Add Driver Profile</h2><button class="close-modal" data-close="driverModal">×</button></div><label>Driver Name</label><input id="newDriverName"><label>Truck Number</label><input id="newDriverTruck"><label>Phone Number</label><input id="newDriverPhone"><label>Address</label><input id="newDriverAddress"><label>Driver Picture</label><input id="newDriverPhoto" type="file" accept="image/*"><label>Notes</label><textarea id="newDriverNotes"></textarea><button class="btn primary full" id="saveDriverBtn">Save Driver</button></div></div>
-<div id="appToast" class="toast"></div>
-<script src="app.js"></script>
-</body>
-</html>
+:root{--accent:#d6ad55;--bg:#f2f4f8;--panel:#fff;--text:#202b3c;--muted:#788397;--line:#e5e9f0;--sidebar:#101c32;--radius:15px}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,Arial,sans-serif;font-size:14px}
+body.font-large{font-size:16px}body.font-small{font-size:13px}
+body.theme-black{--sidebar:#101010;--accent:#d6ad55}
+body.theme-blue{--sidebar:#123b70;--accent:#4e9cf5}
+body.theme-purple{--sidebar:#35234e;--accent:#bd8cf2}
+body.theme-green{--sidebar:#143c32;--accent:#48b991}
+body.theme-red{--sidebar:#4a2028;--accent:#ec7784}
+body.theme-light{--sidebar:#e8edf5;--text:#202b3c;--accent:#b58a36}
+body.theme-light .sidebar{color:#202b3c}body.theme-light .nav-btn{color:#344054}
+body.theme-slate{--sidebar:#293849;--accent:#91a9c5}
+body.theme-teal{--sidebar:#123d43;--accent:#51c6c0}
+body.theme-brown{--sidebar:#49352a;--accent:#d6a477}
+body.theme-orange{--sidebar:#593519;--accent:#f0a14b}
+body.theme-rose{--sidebar:#512b3d;--accent:#e69ab5}
+body.style-classic{--radius:5px}
+button,input,select{font:inherit}
+button{cursor:pointer}
+input,select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:9px;background:#fff;color:#263246;outline:none;min-width:0}
+input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)}
+label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:13px}
+label input,label select{display:block;margin-top:7px}
+.hidden{display:none!important}
+.full{width:100%}
+.btn{border:0;border-radius:9px;padding:10px 15px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn.primary{background:var(--sidebar);color:#fff}
+.btn.outline{background:#fff;border:1px solid var(--line);color:var(--text)}
+.btn.danger{background:#fff0f0;color:#c33b49;border:1px solid #f5d2d5}
+.btn.logout{background:#ffffff18;color:inherit;border:1px solid #ffffff25}
+.btn.small{padding:7px 10px;font-size:12px}
+.btn:hover{filter:brightness(.96);transform:translateY(-1px)}
+.login-screen{min-height:100vh;display:grid;place-items:center;padding:20px;background:linear-gradient(135deg,#0d192e,#243d60)}
+.login-card{width:min(420px,100%);background:#fff;border-radius:22px;padding:36px;box-shadow:0 25px 70px #0005;text-align:center}
+.login-card h1{font-size:20px;letter-spacing:1px;margin:16px 0 5px}.login-card p{color:var(--muted)}
+.login-card input{margin:12px 0}
+.brand-mark{width:65px;height:65px;border-radius:18px;margin:auto;background:#14243d;color:#e1ba65;display:grid;place-items:center;font-size:25px;font-weight:900;border:2px solid #d6ad55}
+.link-btn{border:0;background:none;color:#446c9c;margin-top:18px}
+#loginMessage{font-size:13px;min-height:18px}
+.app{min-height:100vh}
+.sidebar{width:250px;position:fixed;inset:0 auto 0 0;background:linear-gradient(160deg,var(--sidebar),#101726);color:#fff;padding:23px 16px;display:flex;flex-direction:column;z-index:10;overflow-y:auto}
+body.sidebar-solid .sidebar{background:var(--sidebar)}
+.side-brand{display:flex;align-items:center;gap:11px;padding:4px 5px 25px;border-bottom:1px solid #ffffff20}
+.side-brand span{width:42px;height:42px;border-radius:12px;background:#d6ad55;color:#18243a;display:grid;place-items:center;font-weight:900;font-size:18px}
+.side-brand b{font-size:13px;display:block}.side-brand small{font-size:9px;letter-spacing:2px;color:#c4cbd6}
+.manager-mini{display:flex;align-items:center;gap:10px;padding:20px 5px}
+.manager-mini b,.manager-mini small{display:block}.manager-mini small{color:#aab6c8;margin-top:4px}
+.avatar{width:38px;height:38px;border-radius:50%;background:#d6ad55;color:#17243a;display:grid;place-items:center;font-weight:800}
+.sidebar nav{display:grid;gap:6px}
+.nav-btn{background:transparent;border:0;text-align:left;color:#cbd4e1;padding:12px;border-radius:9px;font-weight:600}
+.nav-btn:hover,.nav-btn.active{background:#ffffff19;color:#fff}
+.nav-btn span{float:right;background:#d6ad55;color:#17243a;border-radius:20px;padding:1px 7px}
+.sidebar .logout{margin-top:auto}
+.main{margin-left:250px;padding:0 25px 35px;min-width:0}
+.topbar{height:75px;display:flex;align-items:center;gap:15px;border-bottom:1px solid var(--line)}
+.topbar>div:first-of-type{display:grid;gap:4px}.topbar small{color:var(--muted)}
+.top-user{margin-left:auto;font-weight:700}
+.menu-toggle{display:none;border:0;background:none;font-size:22px}
+.toolbar{display:flex;justify-content:flex-end;align-items:center;gap:12px;padding:12px 0;color:var(--muted);font-size:12px}
+.view{display:none}.view.active-view{display:block}
+.section-heading{display:flex;justify-content:space-between;align-items:center;gap:15px;margin:18px 0}
+.section-heading h1{font-size:25px;margin:0 0 6px}.section-heading p{margin:0;color:var(--muted)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:18px;box-shadow:0 3px 13px #182a4010;min-width:0}
+.panel h2{font-size:17px;margin:0 0 16px}.panel h3{font-size:14px;margin:20px 0 12px}
+.panel-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:15px}
+.panel-heading h2{margin:0}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.form-grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.driver-info{display:flex;align-items:center;gap:14px;border-top:1px solid var(--line);margin-top:12px;padding-top:15px;line-height:1.8}
+.driver-photo,.table-photo{width:48px;height:48px;object-fit:cover;border-radius:50%}
+.table-photo{width:36px;height:36px}
+.mini-avatar{width:48px;height:48px;border-radius:50%;background:#e9edf4;display:grid;place-items:center;font-weight:800}
+.stats-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;margin-bottom:18px}
+.stat-card{background:#fff;border:1px solid var(--line);border-radius:13px;padding:17px}
+.stat-card small{display:block;color:var(--muted);margin-bottom:9px}.stat-card b{font-size:21px}
+.two-col{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.table-wrap{width:100%;overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:650px;font-size:12px}
+th{background:#f5f7fa;color:#59667a;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+td,th{padding:12px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+td input{min-width:85px;padding:8px;font-size:12px}
+.empty-row{text-align:center;color:var(--muted);padding:25px}
+.info-box{padding:13px;background:#f4f6fa;border-radius:10px;margin-bottom:14px;line-height:1.8}
+.totals-line{display:flex;justify-content:space-between;gap:15px;padding:11px 5px;border-bottom:1px solid var(--line)}
+.totals-line.total{font-size:17px;font-weight:800;color:#1b7658}
+hr{border:0;border-top:1px solid var(--line);margin:20px 0}
+.column-choices,.theme-choices{display:flex;flex-wrap:wrap;gap:9px;margin:12px 0}
+.column-choices label{display:flex;align-items:center;gap:6px;padding:8px;background:#f4f6fa;border-radius:8px;margin:0}
+.column-choices input{width:auto}
+.theme-choice{padding:9px 12px;background:#f2f4f8;border:1px solid var(--line);border-radius:8px}
+.theme-choice.selected{border:2px solid var(--accent);font-weight:800}
+.manager-preview{width:75px;height:75px;border-radius:50%;background:#e9edf4;display:grid;place-items:center;background-size:cover;background-position:center;font-size:22px;font-weight:800;margin-bottom:14px}
+.modal{position:fixed;inset:0;background:#101a2dcc;display:grid;place-items:center;padding:15px;z-index:30}
+.modal-card{width:min(480px,100%);max-height:90vh;overflow:auto;background:#fff;border-radius:17px;padding:22px}
+.close-btn{border:0;background:#f1f3f6;border-radius:8px;width:32px;height:32px;font-size:21px}
+.toast{position:fixed;bottom:22px;right:22px;background:#17263d;color:#fff;padding:13px 19px;border-radius:10px;box-shadow:0 5px 20px #0003;opacity:0;pointer-events:none;transform:translateY(10px);transition:.2s;z-index:50;max-width:min(420px,90vw)}
+.toast.show{opacity:1;transform:translateY(0)}
+.report-card{background:#fff;border:1px solid var(--line);border-radius:13px;padding:18px;margin-bottom:12px;cursor:pointer}
+.report-card-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.report-metric{background:#f4f6f9;padding:12px;border-radius:8px;color:var(--muted);font-size:11px}
+.report-metric b{display:block;color:var(--text);font-size:15px;margin-top:7px}
+.report-gold{border-top:3px solid #d6ad55}.report-blue{border-top:3px solid #4e9cf5}.report-green{border-top:3px solid #48b991}
+.statement-content{padding:30px}.statement-header{text-align:center;margin-bottom:25px}.statement-header h2{font-size:23px}
+.statement-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-bottom:22px}
+.statement-meta div{background:#f4f6f9;padding:12px;border-radius:8px}
+.statement-meta b{display:block;color:var(--muted);font-size:10px;margin-bottom:5px}
+.statement-section{margin:22px 0}.statement-section h3{margin-bottom:10px}
+.statement-total{max-width:450px;margin-left:auto}.statement-total div{display:flex;justify-content:space-between;padding:9px;border-bottom:1px solid var(--line)}
+@media(max-width:1000px){.sidebar{width:220px}.main{margin-left:220px;padding:0 16px 25px}.stats-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:720px){.sidebar{transform:translateX(-100%);transition:.25s;width:260px}.sidebar.open{transform:translateX(0)}.main{margin-left:0;padding:0 12px 25px}.menu-toggle{display:block}.topbar{height:65px}.section-heading{align-items:flex-start;flex-direction:column}.form-grid.three,.form-grid{grid-template-columns:1fr}.two-col{grid-template-columns:1fr}.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.stat-card{padding:13px}.stat-card b{font-size:17px}.report-card-grid{grid-template-columns:repeat(2,1fr)}.statement-meta{grid-template-columns:repeat(2,1fr)}.statement-content{padding:15px}.top-user{font-size:12px}}
+@media print{.sidebar,.topbar,.toolbar,.section-heading button,.btn,.menu-toggle{display:none!important}.main{margin:0;padding:0}.view{display:none!important}#statementView.active-view{display:block!important}#statementContent{box-shadow:none;border:0}.statement-content{padding:0}body{background:#fff}}
