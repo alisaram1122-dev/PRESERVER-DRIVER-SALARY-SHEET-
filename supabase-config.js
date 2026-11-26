@@ -1,7 +1,7 @@
-// Preserver Trans LLC Supabase configuration
+// Preserver Trans LLC - Supabase Configuration
 
 window.PRESERVER_SUPABASE_URL =
   "https://lriojwlaxemghavidsjt.supabase.co";
 
 window.PRESERVER_SUPABASE_ANON_KEY =
-  "sb_publishable_HFnwZD1cccBr6RsIDhZPbA_MxHGK0T6";
+  "PASTE_YOUR_REAL_SUPABASE_ANON_OR_PUBLISHABLE_KEY_HERE";
