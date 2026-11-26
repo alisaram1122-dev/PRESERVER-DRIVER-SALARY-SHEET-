@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Preserver Trans LLC | Driver Salary</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="login-screen" id="loginScreen">
+  <div class="login-panel">
+    <div class="brand-mark">PT</div>
+    <div class="brand-name dark-brand">PRESERVER <span>TRANS LLC</span></div>
+    <div class="eyebrow">SECURE PAYROLL ACCESS</div>
+    <h1>Driver Salary Portal</h1>
+    <p>Sign in to access your salary records from any computer.</p>
+    <div id="authMessage" class="auth-message"></div>
+    <label>USERNAME / EMAIL
+      <input id="authEmail" type="email" placeholder="Enter your account email" autocomplete="username">
+    </label>
+    <label>PASSWORD
+      <input id="authPassword" type="password" placeholder="Enter password" autocomplete="current-password">
+    </label>
+    <button class="primary login-submit" id="loginBtn">Login</button>
+    <button class="secondary login-submit" id="signupBtn">Create Account</button>
+    <div class="login-note">Use the same account on every computer.</div>
+  </div>
+</div>
+
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand-mark">PT</div>
+    <div class="brand-name">PRESERVER <span>TRANS LLC</span></div>
+    <div class="side-label">WORKSPACE</div>
+    <button class="nav active" id="navSalary">▦ &nbsp; Salary Sheets</button>
+    <button class="nav" id="navSettings">⚙ &nbsp; Settings</button>
+    <div class="side-bottom">
+      <span class="online-dot"></span> Cloud database
+      <br><small>Account connected</small>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">PAYROLL MANAGEMENT</div>
+        <h1>Driver Salary Management</h1>
+      </div>
+      <div class="manager">
+        <span>ACCOUNT MANAGER · SAIM ALI</span>
+        <strong id="userLabel">Signed in</strong>
+        <button class="logout-btn" id="logoutBtn">Log out</button>
+      </div>
+    </header>
+
+    <section id="salaryView">
+      <div class="welcome-row">
+        <div>
+          <h2>Salary workspace</h2>
+          <p>Manage mileage, driver earnings, deductions and fines.</p>
+        </div>
+        <button class="primary" id="addDriverBtn">＋ Add Driver</button>
+      </div>
+
+      <div class="toolbar">
+        <div class="driver-tabs" id="driverTabs"></div>
+        <div class="period-controls">
+          <label>MONTH<input type="month" id="monthPicker"></label>
+        </div>
+      </div>
+
+      <div id="emptyState" class="empty hidden">
+        <div class="empty-icon">＋</div>
+        <h3>No driver added yet</h3>
+        <p>Add your first driver to create a salary sheet.</p>
+        <button class="primary" id="emptyAddBtn">Add First Driver</button>
+      </div>
+
+      <div id="sheetArea">
+        <div class="driver-heading">
+          <div>
+            <div class="eyebrow">DRIVER PAYROLL STATEMENT</div>
+            <h2 id="sheetDriverName">Driver</h2>
+            <p id="sheetPeriod"></p>
+          </div>
+          <div class="heading-actions">
+            <button class="secondary" id="printBtn">⇩ Print / Save PDF</button>
+            <button class="danger-outline" id="deleteDriverBtn">Delete Driver</button>
+          </div>
+        </div>
+
+        <div class="info-grid">
+          <label>DRIVER NAME<input id="driverName" placeholder="Driver name"></label>
+          <label>TRUCK NUMBER<input id="truckNumber" placeholder="e.g. 7867"></label>
+          <label>MONTH<input id="monthDisplay" disabled></label>
+          <label>YEAR<input id="yearDisplay" disabled></label>
+        </div>
+
+        <div class="section-title">
+          <div>
+            <h3>Mileage & Salary Calculation</h3>
+            <p>Enter previous and new odometer miles. Difference calculates automatically.</p>
+          </div>
+          <button class="primary small" id="addMileageBtn">＋ Add Mileage Row</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>DATE</th>
+                <th>PREVIOUS MILES</th>
+                <th>NEW MILES</th>
+                <th>MILES DIFFERENCE</th>
+                <th>RATE / MILE</th>
+                <th>AMOUNT (USD)</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="mileageRows"></tbody>
+          </table>
+        </div>
+
+        <div class="totals-strip">
+          <div><span>TOTAL PREVIOUS MILES</span><strong id="totalPrev">0</strong></div>
+          <div><span>TOTAL NEW MILES</span><strong id="totalNew">0</strong></div>
+          <div><span>TOTAL MILES</span><strong id="totalMiles">0</strong></div>
+          <div class="highlight"><span>MILEAGE EARNINGS</span><strong id="mileageTotal">$0.00</strong></div>
+        </div>
+
+        <div class="bottom-grid">
+          <section class="money-card">
+            <div class="section-title compact">
+              <div><h3>Salary Additions</h3><p>Add any amount to increase the driver's salary.</p></div>
+              <button class="secondary small" id="addDeductionBtn">＋ Add</button>
+            </div>
+            <div id="deductionRows"></div>
+            <div class="sub-total"><span>Total added</span><strong id="deductionTotal">$0.00</strong></div>
+          </section>
+
+          <section class="money-card fine-card">
+            <div class="section-title compact">
+              <div><h3>Fines</h3><p>These amounts are subtracted from salary.</p></div>
+              <button class="secondary small" id="addFineBtn">＋ Add Fine</button>
+            </div>
+            <div id="fineRows"></div>
+            <div class="sub-total"><span>Total fines</span><strong id="fineTotal">$0.00</strong></div>
+          </section>
+        </div>
+
+        <div class="bottom-grid finance-grid">
+          <section class="money-card advance-card">
+            <div class="section-title compact">
+              <div><h3>Driver Advances</h3><p>Record cash advances given to the driver.</p></div>
+              <button class="secondary small" id="addAdvanceBtn">＋ Add Advance</button>
+            </div>
+            <div id="advanceRows"></div>
+            <div class="sub-total"><span>Total advances taken</span><strong id="advanceTotal">$0.00</strong></div>
+            <div class="sub-total balance-line"><span>Outstanding advance balance</span><strong id="advanceBalance">$0.00</strong></div>
+          </section>
+
+          <section class="money-card repayment-card">
+            <div class="section-title compact">
+              <div><h3>Advance Recovery</h3><p>Amount deducted from salary to repay advances.</p></div>
+              <button class="secondary small" id="addRecoveryBtn">＋ Add Recovery</button>
+            </div>
+            <div id="recoveryRows"></div>
+            <div class="sub-total"><span>Total advance deducted</span><strong id="recoveryTotal">$0.00</strong></div>
+          </section>
+        </div>
+
+        <section class="money-card payment-card">
+          <div class="section-title compact">
+            <div><h3>Salary Payments</h3><p>Record salary already paid.</p></div>
+            <button class="secondary small" id="addPaymentBtn">＋ Add Payment</button>
+          </div>
+          <div id="paymentRows"></div>
+          <div class="payment-totals">
+            <div><span>TOTAL PAID</span><strong id="paidTotal">$0.00</strong></div>
+            <div><span>REMAINING SALARY</span><strong id="salaryBalance">$0.00</strong></div>
+          </div>
+        </section>
+
+        <div class="pay-summary">
+          <div>
+            <span>FINAL SALARY</span>
+            <small>Mileage + additions − fines − advance recovery</small>
+          </div>
+          <strong id="finalSalary">$0.00</strong>
+        </div>
+
+        <div class="sheet-footer">
+          <span>Preserver Trans LLC · USA California</span>
+          <span>Prepared by Account Manager: Saim Ali</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="settingsView" class="hidden">
+      <div class="welcome-row">
+        <div><h2>Settings</h2><p>Set the default mileage rate for new entries.</p></div>
+      </div>
+      <div class="settings-card">
+        <div class="setting-icon">＄</div>
+        <div>
+          <h3>Default pay rate</h3>
+          <p>Default rate is 52 US cents per mile ($0.52).</p>
+          <label class="rate-label">RATE PER MILE (USD)
+            <div class="rate-input"><span>$</span><input id="defaultRate" type="number" min="0" step="0.01"></div>
+          </label>
+          <button class="primary" id="saveSettings">Save Settings</button>
+          <p class="note">Changing the default rate applies to new rows only.</p>
+        </div>
+      </div>
+    </section>
+
+    <footer class="app-footer">PRESERVER TRANS LLC <span>•</span> DRIVER PAYROLL SYSTEM <span>•</span> v1.0</footer>
+  </main>
+</div>
+
+<div class="modal hidden" id="driverModal">
+  <div class="modal-box">
+    <button class="modal-close" id="closeModal">×</button>
+    <div class="eyebrow">NEW PAYROLL PROFILE</div>
+    <h2>Add Driver</h2>
+    <p>Create a separate salary sheet for each driver.</p>
+    <label>DRIVER NAME<input id="newDriverName" placeholder="Enter driver name"></label>
+    <label>TRUCK NUMBER<input id="newTruckNumber" placeholder="Enter truck number"></label>
+    <div class="modal-actions">
+      <button class="secondary" id="cancelDriver">Cancel</button>
+      <button class="primary" id="createDriver">Create Driver Sheet</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
