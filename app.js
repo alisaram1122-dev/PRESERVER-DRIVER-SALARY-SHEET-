@@ -1,3 +1,4 @@
+
 const $ = id => document.getElementById(id);
 
 const STORAGE_KEY = "preserver_salary_cache_v2";
@@ -6,92 +7,101 @@ const SUPABASE_ANON_KEY = window.PRESERVER_SUPABASE_ANON_KEY;
 
 let sb = null;
 let user = null;
-let db = { rate: 0.52, drivers: [] };
+let db = {
+  rate: 0.52,
+  drivers: [],
+  history: [],
+  settings: {}
+};
+
 let activeId = null;
 let currentMonth = new Date().toISOString().slice(0, 7);
 let saveTimer = null;
-let currentView = "salary";
 
-const money = n => new Intl.NumberFormat("en-US", {
-  style: "currency", currency: "USD"
-}).format(Number(n) || 0);
+const defaultSettings = {
+  company: "Preserver Trans LLC",
+  manager: "Saim Ali",
+  location: "USA California",
+  currency: "USD",
+  decimals: 0,
+  paymentMethod: "Cash",
+  addition: "Extra payment",
+  fine: "Fine",
+  advance: "Driver advance",
+  autoMiles: true,
+  confirmPay: true,
+  showZero: false
+};
 
-const num = n => (Number(n) || 0).toLocaleString("en-US", {
-  maximumFractionDigits: 2
-});
+const uid = () =>
+  Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 
-const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const money = n => {
+  const currency = db.settings?.currency || "USD";
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency
+    }).format(Number(n) || 0);
+  } catch {
+    return "$" + (Number(n) || 0).toFixed(2);
+  }
+};
 
-const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({
-  "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
-}[c]));
+const num = n =>
+  (Number(n) || 0).toLocaleString("en-US", {
+    maximumFractionDigits: Number(db.settings?.decimals ?? 0)
+  });
 
-function toast(msg) {
-  $("toast").textContent = msg;
+const esc = s =>
+  String(s ?? "").replace(/[&<>"']/g, c => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[c]));
+
+function toast(message) {
+  $("toast").textContent = message;
   $("toast").classList.add("show");
-  setTimeout(() => $("toast").classList.remove("show"), 2400);
+  setTimeout(() => $("toast").classList.remove("show"), 2600);
 }
 
-function setAuthMessage(msg, good = false) {
-  $("authMessage").textContent = msg;
-  $("authMessage").style.color = good ? "#16845b" : "#b44343";
+function setAuthMessage(message, good = false) {
+  $("authMessage").textContent = message;
+  $("authMessage").style.color = good ? "#16845b" : "#c84b4b";
 }
 
 function cache() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
   } catch (e) {
-    console.error("Local cache error:", e);
+    console.error("Local save error", e);
+    toast("Local storage is full. Try a smaller driver photo.");
   }
 }
 
-function restoreCache() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {rate:.52,drivers:[]};
-  } catch {
-    return {rate:.52,drivers:[]};
-  }
-}
+function normalizeDB(data) {
+  const result = data && typeof data === "object"
+    ? data
+    : { rate: 0.52, drivers: [] };
 
-function scheduleSave() {
-  cache();
-  if (!user || !sb) return;
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(saveCloud, 650);
-}
+  result.rate = Number(result.rate ?? 0.52);
+  result.drivers = Array.isArray(result.drivers) ? result.drivers : [];
+  result.history = Array.isArray(result.history) ? result.history : [];
+  result.settings = {
+    ...defaultSettings,
+    ...(result.settings || {})
+  };
 
-async function saveCloud() {
-  if (!user || !sb) return;
+  result.drivers.forEach(d => {
+    d.months = d.months || {};
+    d.photo = d.photo || "";
+    d.phone = d.phone || "";
+    d.address = d.address || "";
+    d.notes = d.notes || "";
 
-  const { error } = await sb.from("driver_salary_data").upsert({
-    user_id:user.id,
-    payload:db,
-    updated_at:new Date().toISOString()
-  }, {onConflict:"user_id"});
-
-  if (error) {
-    console.error(error);
-    toast("Cloud save failed: " + error.message);
-  }
-}
-
-async function loadCloud() {
-  const {data,error} = await sb.from("driver_salary_data")
-    .select("payload").eq("user_id",user.id).maybeSingle();
-
-  if (error) throw error;
-
-  if (data?.payload) {
-    db = data.payload;
-    db.drivers ||= [];
-    db.rate = Number(db.rate ?? .52);
-  } else {
-    db = {rate:.52,drivers:[]};
-    await saveCloud();
-  }
-
-  db.drivers.forEach(d => {
-    d.months ||= {};
     Object.values(d.months).forEach(m => {
       m.rows ||= [];
       m.adds ||= [];
@@ -102,155 +112,360 @@ async function loadCloud() {
     });
   });
 
-  cache();
-  activeId = db.drivers[0]?.id || null;
-  render();
-  $("loginScreen").classList.add("hidden");
-  $("userLabel").textContent = user.email || "Account";
+  return result;
 }
 
-function monthData(d, month = currentMonth) {
-  d.months ||= {};
-  d.months[month] ||= {
-    rows:[],adds:[],fines:[],advances:[],recoveries:[],payments:[]
-  };
+function scheduleSave() {
+  cache();
+  if (!user || !sb) return;
 
-  const m = d.months[month];
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveCloud, 700);
+}
 
-  ["rows","adds","fines","advances","recoveries","payments"]
-    .forEach(k => m[k] ||= []);
+async function saveCloud() {
+  if (!user || !sb) return;
 
-  return m;
+  const { error } = await sb
+    .from("driver_salary_data")
+    .upsert({
+      user_id: user.id,
+      payload: db,
+      updated_at: new Date().toISOString()
+    }, {
+      onConflict: "user_id"
+    });
+
+  if (error) {
+    console.error(error);
+    toast("Cloud save failed: " + error.message);
+  }
+}
+
+async function loadCloud() {
+  const { data, error } = await sb
+    .from("driver_salary_data")
+    .select("payload")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  if (data?.payload) {
+    db = normalizeDB(data.payload);
+  } else {
+    db = normalizeDB({
+      rate: 0.52,
+      drivers: [],
+      history: [],
+      settings: defaultSettings
+    });
+    await saveCloud();
+  }
+
+  cache();
+  activeId = db.drivers[0]?.id || null;
+
+  $("monthPicker").value = currentMonth;
+  $("loginScreen").classList.add("hidden");
+  $("userLabel").textContent = db.settings.manager || user.email || "Account";
+
+  render();
 }
 
 function driver() {
   return db.drivers.find(d => d.id === activeId);
 }
 
-function allDriverMonths(d) {
-  return Object.entries(d.months || {});
+function monthData(d, month = currentMonth) {
+  d.months ||= {};
+
+  d.months[month] ||= {
+    rows: [],
+    adds: [],
+    fines: [],
+    advances: [],
+    recoveries: [],
+    payments: []
+  };
+
+  const m = d.months[month];
+
+  m.rows ||= [];
+  m.adds ||= [];
+  m.fines ||= [];
+  m.advances ||= [];
+  m.recoveries ||= [];
+  m.payments ||= [];
+
+  return m;
 }
 
-function totalsFor(d) {
-  let adv=0, rec=0;
+function allMonths(d) {
+  return Object.keys(d.months || {})
+    .sort()
+    .map(key => ({ key, data: d.months[key] }));
+}
 
-  allDriverMonths(d).forEach(([,m]) => {
-    (m.advances||[]).forEach(x => adv += Number(x.amount)||0);
-    (m.recoveries||[]).forEach(x => rec += Number(x.amount)||0);
+function mileageEntries(d) {
+  const entries = [];
+
+  allMonths(d).forEach(({ key, data }) => {
+    (data.rows || []).forEach(r => {
+      entries.push({
+        ...r,
+        monthKey: key
+      });
+    });
   });
 
-  return {adv,rec,balance:adv-rec};
+  return entries.sort((a, b) =>
+    String(a.date || a.monthKey).localeCompare(String(b.date || b.monthKey))
+  );
 }
 
-function monthGross(m) {
-  const mileage = (m.rows||[]).reduce((s,r) => {
-    const diff = Math.max(0,(Number(r.next)||0)-(Number(r.prev)||0));
-    return s + diff*(Number(r.rate)||0);
-  },0);
+function lastMilesFor(d) {
+  const entries = mileageEntries(d);
+  if (!entries.length) return 0;
 
-  const sum = key => (m[key]||[]).reduce((s,r)=>s+(Number(r.amount)||0),0);
-
-  return mileage + sum("adds") - sum("fines") - sum("recoveries");
+  const latest = entries[entries.length - 1];
+  return Number(latest.next) || 0;
 }
 
-function driverFinancials(d) {
-  let gross=0, paid=0;
+function monthFigures(d, month) {
+  const m = monthData(d, month);
 
-  allDriverMonths(d).forEach(([,m]) => {
-    gross += monthGross(m);
-    paid += (m.payments||[]).reduce((s,p)=>s+(Number(p.amount)||0),0);
+  let miles = 0;
+  let mileagePay = 0;
+  let prev = 0;
+  let next = 0;
+
+  m.rows.forEach(r => {
+    const difference = Math.max(
+      0,
+      (Number(r.next) || 0) - (Number(r.prev) || 0)
+    );
+
+    prev += Number(r.prev) || 0;
+    next += Number(r.next) || 0;
+    miles += difference;
+    mileagePay += difference * (Number(r.rate) || 0);
   });
 
-  return {gross,paid,outstanding:Math.max(0,gross-paid)};
+  const additions = m.adds.reduce(
+    (s, r) => s + (Number(r.amount) || 0), 0
+  );
+
+  const fines = m.fines.reduce(
+    (s, r) => s + (Number(r.amount) || 0), 0
+  );
+
+  const advances = m.advances.reduce(
+    (s, r) => s + (Number(r.amount) || 0), 0
+  );
+
+  const recoveries = m.recoveries.reduce(
+    (s, r) => s + (Number(r.amount) || 0), 0
+  );
+
+  const paid = m.payments.reduce(
+    (s, r) => s + (Number(r.amount) || 0), 0
+  );
+
+  const gross = mileagePay + additions - fines - recoveries;
+
+  return {
+    prev,
+    next,
+    miles,
+    mileagePay,
+    additions,
+    fines,
+    advances,
+    recoveries,
+    paid,
+    gross,
+    balance: gross - paid
+  };
+}
+
+function driverFigures(d) {
+  let earned = 0;
+  let paid = 0;
+  let miles = 0;
+
+  allMonths(d).forEach(({ key }) => {
+    const f = monthFigures(d, key);
+    earned += f.gross;
+    paid += f.paid;
+    miles += f.miles;
+  });
+
+  return {
+    earned,
+    paid,
+    miles,
+    balance: Math.max(0, earned - paid)
+  };
+}
+
+function previousDues(d) {
+  let total = 0;
+
+  allMonths(d).forEach(({ key }) => {
+    if (key < currentMonth) {
+      total += monthFigures(d, key).balance;
+    }
+  });
+
+  return Math.max(0, total);
 }
 
 function renderTabs() {
-  const wrap=$("driverTabs");
-  wrap.innerHTML="";
+  const wrap = $("driverTabs");
+  wrap.innerHTML = "";
 
-  db.drivers.forEach(d=>{
-    const b=document.createElement("button");
-    b.className="driver-tab"+(d.id===activeId?" active":"");
-    b.textContent=d.name||"Unnamed Driver";
-    b.onclick=()=>{
-      activeId=d.id;
-      showView("salary");
+  db.drivers.forEach(d => {
+    const button = document.createElement("button");
+    button.className = "driver-tab" + (d.id === activeId ? " active" : "");
+    button.textContent = d.name || "Unnamed Driver";
+
+    button.onclick = () => {
+      activeId = d.id;
       render();
     };
-    wrap.append(b);
+
+    wrap.append(button);
   });
 }
 
 function render() {
   renderTabs();
 
-  const d=driver();
-  const empty=!d;
+  const d = driver();
+  const empty = !d;
 
-  $("emptyState").classList.toggle("hidden",!empty);
-  $("sheetArea").classList.toggle("hidden",empty);
+  $("emptyState").classList.toggle("hidden", !empty);
+  $("sheetArea").classList.toggle("hidden", empty);
 
-  if (empty) {
-    $("sheetDriverName").textContent="Driver";
-  } else {
-    const m=monthData(d);
-    const [y,mo]=currentMonth.split("-");
+  if (!d) return;
 
-    $("sheetDriverName").textContent=d.name||"Driver";
-    $("sheetPeriod").textContent=new Date(+y,+mo-1,1)
-      .toLocaleDateString("en-US",{month:"long",year:"numeric"})+" salary statement";
+  const m = monthData(d);
+  const f = monthFigures(d, currentMonth);
+  const total = driverFigures(d);
+  const dues = previousDues(d);
 
-    $("driverName").value=d.name||"";
-    $("truckNumber").value=d.truck||"";
-    $("monthDisplay").value=new Date(+y,+mo-1,1)
-      .toLocaleDateString("en-US",{month:"long"});
-    $("yearDisplay").value=y;
+  const [year, month] = currentMonth.split("-");
+  const monthName = new Date(
+    Number(year),
+    Number(month) - 1,
+    1
+  ).toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric"
+  });
 
-    renderMileage(m);
-    renderMoneyRows(m,"adds","deductionRows","Salary addition description");
-    renderMoneyRows(m,"fines","fineRows","Fine description");
-    renderMoneyRows(m,"advances","advanceRows","Advance purpose / note");
-    renderMoneyRows(m,"recoveries","recoveryRows","Advance recovery note");
-    renderMoneyRows(m,"payments","paymentRows","Payment note",true);
+  $("sheetDriverName").textContent = d.name;
+  $("sheetPeriod").textContent = monthName + " Salary Statement";
 
-    calc(m,d);
-  }
+  $("driverName").value = d.name || "";
+  $("truckNumber").value = d.truck || "";
+  $("driverPhone").value = d.phone || "";
+  $("driverAddress").value = d.address || "";
+  $("driverNotes").value = d.notes || "";
 
-  renderOutstanding();
-  renderPaymentHistory();
+  $("lastMiles").textContent = num(lastMilesFor(d));
+  $("currentMiles").textContent = num(f.miles);
+  $("previousDues").textContent = money(dues);
+  $("driverOutstanding").textContent = money(total.balance);
+  $("dueBoxBalance").textContent = money(total.balance);
+
+  const photo = d.photo || "";
+  $("profilePreview").src = photo || defaultPhoto();
+  $("profileLarge").src = photo || defaultPhoto();
+
+  renderMileage(m);
+  renderMoneyRows(m, "adds", "additionRows", db.settings.addition);
+  renderMoneyRows(m, "fines", "fineRows", db.settings.fine);
+  renderMoneyRows(m, "advances", "advanceRows", db.settings.advance);
+  renderMoneyRows(m, "recoveries", "recoveryRows", "Advance recovery");
+
+  $("totalPrev").textContent = num(f.prev);
+  $("totalNew").textContent = num(f.next);
+  $("totalMiles").textContent = num(f.miles);
+
+  $("mileageTotal").textContent = money(f.mileagePay);
+  $("additionTotal").textContent = money(f.additions);
+  $("fineTotal").textContent = money(f.fines);
+  $("advanceTotal").textContent = money(f.advances);
+  $("recoveryTotal").textContent = money(f.recoveries);
+  $("finalSalary").textContent = money(f.gross);
+
+  $("footerCompany").textContent =
+    db.settings.company + " · " + db.settings.location;
+}
+
+function defaultPhoto() {
+  return "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120">
+      <rect width="100%" height="100%" fill="#e8edf4"/>
+      <circle cx="60" cy="43" r="22" fill="#aab7c8"/>
+      <path d="M18 115c3-28 19-42 42-42s39 14 42 42" fill="#aab7c8"/>
+    </svg>`
+  );
 }
 
 function renderMileage(m) {
-  const body=$("mileageRows");
-  body.innerHTML="";
+  const body = $("mileageRows");
+  body.innerHTML = "";
 
   if (!m.rows.length) {
-    body.innerHTML='<tr><td colspan="7" style="text-align:center;color:#8793a3;padding:22px">No mileage entries. Select “Add Mileage Row” to begin.</td></tr>';
+    body.innerHTML = `
+      <tr><td colspan="7" class="empty-cell">
+        No mileage entries. Click Add Mileage to start.
+      </td></tr>`;
     return;
   }
 
-  m.rows.forEach(r=>{
-    const tr=document.createElement("tr");
-    const diff=Math.max(0,(Number(r.next)||0)-(Number(r.prev)||0));
+  m.rows.forEach(r => {
+    const tr = document.createElement("tr");
+    const diff = Math.max(
+      0,
+      (Number(r.next) || 0) - (Number(r.prev) || 0)
+    );
+    const amount = diff * (Number(r.rate) || 0);
 
-    tr.innerHTML=`
-      <td><input class="date-input" type="date" value="${esc(r.date||"")}" data-field="date"></td>
-      <td><input type="number" min="0" step="0.1" value="${r.prev??""}" placeholder="0" data-field="prev"></td>
-      <td><input type="number" min="0" step="0.1" value="${r.next??""}" placeholder="0" data-field="next"></td>
+    tr.innerHTML = `
+      <td><input type="date" value="${esc(r.date || "")}" data-field="date"></td>
+      <td><input type="number" value="${r.prev ?? 0}" readonly></td>
+      <td><input type="number" min="0" step="0.1"
+        value="${r.next ?? ""}" placeholder="Enter new miles" data-field="next"></td>
       <td><span class="calculated">${num(diff)}</span></td>
-      <td><input type="number" min="0" step="0.01" value="${r.rate??db.rate}" data-field="rate"></td>
-      <td class="amount">${money(diff*(Number(r.rate)||0))}</td>
-      <td><button class="delete-row">×</button></td>`;
+      <td><input type="number" min="0" step="0.01"
+        value="${r.rate ?? db.rate}" data-field="rate"></td>
+      <td class="amount">${money(amount)}</td>
+      <td><button class="delete-row" title="Delete row">×</button></td>
+    `;
 
-    tr.querySelectorAll("input").forEach(inp=>inp.onchange=()=>{
-      const f=inp.dataset.field;
-      r[f]=f==="date"?inp.value:(inp.value===""?"":Number(inp.value));
-      scheduleSave();
-      render();
+    tr.querySelectorAll("[data-field]").forEach(input => {
+      input.onchange = () => {
+        const field = input.dataset.field;
+        const value = input.value;
+
+        if (field === "date") {
+          r.date = value;
+        } else {
+          r[field] = value === "" ? "" : Number(value);
+        }
+
+        scheduleSave();
+        render();
+      };
     });
 
-    tr.querySelector("button").onclick=()=>{
-      m.rows=m.rows.filter(x=>x!==r);
+    tr.querySelector(".delete-row").onclick = () => {
+      if (!confirm("Delete this mileage row?")) return;
+      m.rows = m.rows.filter(x => x !== r);
       scheduleSave();
       render();
     };
@@ -259,45 +474,36 @@ function renderMileage(m) {
   });
 }
 
-function renderMoneyRows(m,key,container,placeholder,withDate=false) {
-  const el=$(container);
-  el.innerHTML="";
+function renderMoneyRows(m, key, container, placeholder) {
+  const el = $(container);
+  el.innerHTML = "";
 
-  m[key].forEach(r=>{
-    const row=document.createElement("div");
-    row.className=withDate?"money-row payment-row":"money-row";
+  m[key].forEach(r => {
+    const row = document.createElement("div");
+    row.className = "money-row";
 
-    row.innerHTML=`
-      ${withDate?`<input type="date" class="payment-date" value="${esc(r.date||"")}">`:""}
-      <input class="money-desc" value="${esc(r.desc||"")}" placeholder="${esc(placeholder)}" aria-label="Description">
-      <input class="money-amount" type="number" min="0" step="0.01" value="${r.amount??""}" placeholder="0.00" aria-label="Amount">
-      <button class="delete-row">×</button>`;
+    row.innerHTML = `
+      <input value="${esc(r.desc || "")}" placeholder="${esc(placeholder)}">
+      <input type="number" min="0" step="0.01"
+        value="${r.amount ?? ""}" placeholder="0.00">
+      <button class="delete-row">×</button>
+    `;
 
-    const date=row.querySelector(".payment-date");
-    const desc=row.querySelector(".money-desc");
-    const amt=row.querySelector(".money-amount");
+    const [description, amount] = row.querySelectorAll("input");
 
-    if(date) date.onchange=()=>{
-      r.date=date.value;
+    description.onchange = () => {
+      r.desc = description.value;
       scheduleSave();
-      renderOutstanding();
-      renderPaymentHistory();
     };
 
-    desc.onchange=()=>{
-      r.desc=desc.value;
-      scheduleSave();
-      renderPaymentHistory();
-    };
-
-    amt.onchange=()=>{
-      r.amount=Number(amt.value)||0;
+    amount.onchange = () => {
+      r.amount = Number(amount.value) || 0;
       scheduleSave();
       render();
     };
 
-    row.querySelector("button").onclick=()=>{
-      m[key]=m[key].filter(x=>x!==r);
+    row.querySelector("button").onclick = () => {
+      m[key] = m[key].filter(x => x !== r);
       scheduleSave();
       render();
     };
@@ -306,483 +512,497 @@ function renderMoneyRows(m,key,container,placeholder,withDate=false) {
   });
 }
 
-function calc(m,d) {
-  let prev=0,next=0,miles=0,earn=0;
-
-  m.rows.forEach(r=>{
-    prev+=Number(r.prev)||0;
-    next+=Number(r.next)||0;
-
-    const diff=Math.max(0,(Number(r.next)||0)-(Number(r.prev)||0));
-    miles+=diff;
-    earn+=diff*(Number(r.rate)||0);
-  });
-
-  const sum=k=>(m[k]||[]).reduce((s,r)=>s+(Number(r.amount)||0),0);
-
-  const adds=sum("adds");
-  const fines=sum("fines");
-  const adv=sum("advances");
-  const rec=sum("recoveries");
-  const paid=sum("payments");
-
-  const gross=earn+adds-fines-rec;
-  const remaining=gross-paid;
-
-  $("totalPrev").textContent=num(prev);
-  $("totalNew").textContent=num(next);
-  $("totalMiles").textContent=num(miles);
-  $("mileageTotal").textContent=money(earn);
-
-  $("deductionTotal").textContent=money(adds);
-  $("fineTotal").textContent=money(fines);
-  $("advanceTotal").textContent=money(adv);
-  $("recoveryTotal").textContent=money(rec);
-  $("advanceBalance").textContent=money(totalsFor(d).balance);
-
-  $("paidTotal").textContent=money(paid);
-  $("salaryBalance").textContent=money(remaining);
-  $("finalSalary").textContent=money(gross);
-}
-
-function addRow(key) {
-  const d=driver();
-  if(!d)return;
+function addMoneyRow(key) {
+  const d = driver();
+  if (!d) return;
 
   monthData(d)[key].push({
-    id:uid(),
-    date:new Date().toISOString().slice(0,10),
-    desc:"",
-    amount:0
+    id: uid(),
+    date: new Date().toISOString().slice(0, 10),
+    desc: "",
+    amount: 0
   });
 
   scheduleSave();
   render();
 }
-
-$("monthPicker").value=currentMonth;
-$("monthPicker").onchange=e=>{
-  currentMonth=e.target.value||currentMonth;
-  render();
-};
 
 function addMileage() {
-  const d=driver();
-  if(!d)return;
+  const d = driver();
+  if (!d) return;
+
+  const previous = db.settings.autoMiles
+    ? lastMilesFor(d)
+    : 0;
 
   monthData(d).rows.push({
-    id:uid(),
-    date:new Date().toISOString().slice(0,10),
-    prev:0,
-    next:0,
-    rate:db.rate
+    id: uid(),
+    date: new Date().toISOString().slice(0, 10),
+    prev: previous,
+    next: "",
+    rate: db.rate
   });
 
   scheduleSave();
   render();
-}
-
-$("addMileageBtn").onclick=addMileage;
-$("addDeductionBtn").onclick=()=>addRow("adds");
-$("addFineBtn").onclick=()=>addRow("fines");
-$("addAdvanceBtn").onclick=()=>addRow("advances");
-$("addRecoveryBtn").onclick=()=>addRow("recoveries");
-$("addPaymentBtn").onclick=()=>addRow("payments");
-
-$("driverName").onchange=e=>{
-  const d=driver();
-
-  if(d){
-    d.name=e.target.value.trim()||d.name;
-    scheduleSave();
-    renderTabs();
-    $("sheetDriverName").textContent=d.name;
-    renderOutstanding();
-    renderPaymentHistory();
-  }
-};
-
-$("truckNumber").onchange=e=>{
-  const d=driver();
-
-  if(d){
-    d.truck=e.target.value.trim();
-    scheduleSave();
-    renderOutstanding();
-    renderPaymentHistory();
-  }
-};
-
-function openModal() {
-  $("driverModal").classList.remove("hidden");
-  $("newDriverName").focus();
-}
-
-function closeModal() {
-  $("driverModal").classList.add("hidden");
-  $("newDriverName").value="";
-  $("newTruckNumber").value="";
-}
-
-$("addDriverBtn").onclick=openModal;
-$("emptyAddBtn").onclick=openModal;
-$("closeModal").onclick=closeModal;
-$("cancelDriver").onclick=closeModal;
-
-$("createDriver").onclick=()=>{
-  const name=$("newDriverName").value.trim();
-  const truck=$("newTruckNumber").value.trim();
-
-  if(!name){
-    toast("Please enter driver name.");
-    return;
-  }
-
-  const d={id:uid(),name,truck,months:{}};
-
-  db.drivers.push(d);
-  activeId=d.id;
-
-  scheduleSave();
-  closeModal();
-  showView("salary");
-  render();
-
-  toast("Driver sheet created and syncing.");
-};
-
-// Driver profiles are permanent. Do not delete driver salary history.
-$("deleteDriverBtn").onclick=()=>{
-  toast("Driver records are permanent and cannot be deleted here.");
-};
-
-$("printBtn").onclick=()=>window.print();
-
-function injectExtraUI() {
-  const sidebar=document.querySelector(".sidebar");
-
-  if(!sidebar || $("navOutstanding"))return;
-
-  const settings=$("navSettings");
-
-  const addNav=(id,label)=>{
-    const b=document.createElement("button");
-    b.className="nav";
-    b.id=id;
-    b.textContent=label;
-    settings.after(b);
-    return b;
-  };
-
-  const out=addNav("navOutstanding","▣  Outstanding Salary");
-  const hist=addNav("navHistory","▤  Payment History");
-
-  out.onclick=()=>showView("outstanding");
-  hist.onclick=()=>showView("history");
-
-  const main=document.querySelector(".main");
-  const footer=main.querySelector(".app-footer");
-
-  const outstanding=document.createElement("section");
-  outstanding.id="outstandingView";
-  outstanding.className="extra-view hidden";
-
-  outstanding.innerHTML=`
-    <div class="welcome-row">
-      <div>
-        <h2>Outstanding Salary</h2>
-        <p>Drivers with unpaid salary balances. Fully paid drivers automatically disappear from this list.</p>
-      </div>
-    </div>
-    <div id="outstandingList" class="extra-list"></div>`;
-
-  const history=document.createElement("section");
-  history.id="historyView";
-  history.className="extra-view hidden";
-
-  history.innerHTML=`
-    <div class="welcome-row">
-      <div>
-        <h2>Payment History</h2>
-        <p>Complete record of salary payments for all drivers.</p>
-      </div>
-    </div>
-    <div id="historyList" class="table-wrap extra-table"></div>`;
-
-  footer.before(outstanding,history);
-}
-
-function showView(view) {
-  currentView=view;
-
-  $("salaryView").classList.toggle("hidden",view!=="salary");
-  $("settingsView").classList.toggle("hidden",view!=="settings");
-  $("outstandingView").classList.toggle("hidden",view!=="outstanding");
-  $("historyView").classList.toggle("hidden",view!=="history");
-
-  ["navSalary","navSettings","navOutstanding","navHistory"].forEach(id=>{
-    const el=$(id);
-
-    if(el) {
-      el.classList.toggle("active",
-        (id==="navSalary"&&view==="salary") ||
-        (id==="navSettings"&&view==="settings") ||
-        (id==="navOutstanding"&&view==="outstanding") ||
-        (id==="navHistory"&&view==="history")
-      );
-    }
-  });
-
-  if(view==="settings") {
-    $("defaultRate").value=Number(db.rate).toFixed(2);
-  }
-
-  if(view==="outstanding")renderOutstanding();
-  if(view==="history")renderPaymentHistory();
 }
 
 function renderOutstanding() {
-  const wrap=$("outstandingList");
-  if(!wrap)return;
+  const body = $("outstandingRows");
+  body.innerHTML = "";
 
-  const list=db.drivers
-    .map(d=>({d,...driverFinancials(d)}))
-    .filter(x=>x.outstanding>0.005);
+  const drivers = db.drivers.filter(d => {
+    const balance = driverFigures(d).balance;
+    return db.settings.showZero || balance > 0;
+  });
 
-  if(!list.length) {
-    wrap.innerHTML='<div class="empty-extra">No outstanding salary. All drivers are fully paid.</div>';
+  if (!drivers.length) {
+    body.innerHTML = `<tr><td colspan="7">No outstanding balances.</td></tr>`;
     return;
   }
 
-  wrap.innerHTML=list.map(x=>`
-    <div class="outstanding-card">
-      <div>
-        <small>DRIVER / TRUCK</small>
-        <strong>${esc(x.d.name||"Unnamed Driver")}</strong>
-        <span>${esc(x.d.truck||"No truck number")}</span>
-      </div>
-      <div>
-        <small>TOTAL SALARY EARNED</small>
-        <strong>${money(x.gross)}</strong>
-      </div>
-      <div>
-        <small>OUTSTANDING BALANCE</small>
-        <span class="balance">${money(x.outstanding)}</span>
-      </div>
-      <button class="pay-now" data-pay="${esc(x.d.id)}">＋ Pay</button>
-    </div>
-  `).join("");
+  drivers.forEach(d => {
+    const f = driverFigures(d);
+    const tr = document.createElement("tr");
 
-  wrap.querySelectorAll("[data-pay]").forEach(btn=>{
-    btn.onclick=()=>payOutstanding(btn.dataset.pay);
+    tr.innerHTML = `
+      <td><strong>${esc(d.name)}</strong></td>
+      <td>${esc(d.truck || "")}</td>
+      <td>${num(lastMilesFor(d))}</td>
+      <td>${money(f.earned)}</td>
+      <td>${money(f.paid)}</td>
+      <td class="amount">${money(f.balance)}</td>
+      <td><button class="primary small">Open / Pay</button></td>
+    `;
+
+    tr.querySelector("button").onclick = () => {
+      activeId = d.id;
+      showView("salary");
+      render();
+      $("duePaymentAmount").focus();
+    };
+
+    body.append(tr);
   });
 }
 
-function payOutstanding(id) {
-  const d=db.drivers.find(x=>x.id===id);
-  if(!d)return;
+function renderHistory() {
+  const body = $("historyRows");
+  body.innerHTML = "";
 
-  const balance=driverFinancials(d).outstanding;
-
-  const raw=prompt(
-    `Driver: ${d.name}\nTruck: ${d.truck||"—"}\nOutstanding: ${money(balance)}\n\nEnter payment amount (USD):`
+  const history = [...db.history].sort((a, b) =>
+    String(b.date || "").localeCompare(String(a.date || ""))
   );
 
-  if(raw===null)return;
+  if (!history.length) {
+    body.innerHTML = `<tr><td colspan="10">No payments recorded yet.</td></tr>`;
+    return;
+  }
 
-  const amount=Number(raw);
+  history.forEach(h => {
+    const tr = document.createElement("tr");
 
-  if(!Number.isFinite(amount)||amount<=0) {
+    tr.innerHTML = `
+      <td>${esc(h.date || "")}</td>
+      <td>${esc(h.driverName || "")}</td>
+      <td>${esc(h.truck || "")}</td>
+      <td>${esc(h.month || "")}</td>
+      <td>${num(h.previousMiles)}</td>
+      <td>${num(h.newMiles)}</td>
+      <td>${money(h.monthSalary)}</td>
+      <td class="amount">${money(h.payment)}</td>
+      <td>${money(h.remaining)}</td>
+      <td><strong class="paid-label">PAID</strong></td>
+    `;
+
+    body.append(tr);
+  });
+}
+
+function showView(view) {
+  const views = {
+    salary: "salaryView",
+    outstanding: "outstandingView",
+    history: "historyView",
+    settings: "settingsView"
+  };
+
+  Object.values(views).forEach(id => $(id).classList.add("hidden"));
+  Object.values({
+    salary: "navSalary",
+    outstanding: "navOutstanding",
+    history: "navHistory",
+    settings: "navSettings"
+  }).forEach(id => $(id).classList.remove("active"));
+
+  $(views[view]).classList.remove("hidden");
+
+  const nav = {
+    salary: "navSalary",
+    outstanding: "navOutstanding",
+    history: "navHistory",
+    settings: "navSettings"
+  };
+
+  $(nav[view]).classList.add("active");
+
+  if (view === "outstanding") renderOutstanding();
+  if (view === "history") renderHistory();
+  if (view === "salary") render();
+  if (view === "settings") loadSettingsForm();
+}
+
+function payDue() {
+  const d = driver();
+  if (!d) return;
+
+  const amount = Number($("duePaymentAmount").value);
+  const balance = driverFigures(d).balance;
+
+  if (!Number.isFinite(amount) || amount <= 0) {
     toast("Enter a valid payment amount.");
     return;
   }
 
-  if(amount>balance+0.005) {
-    toast("Payment cannot exceed outstanding balance.");
+  if (amount > balance + 0.001) {
+    toast("Payment cannot be greater than outstanding balance.");
     return;
   }
 
-  const dateRaw=prompt(
-    "Payment date (YYYY-MM-DD):",
-    new Date().toISOString().slice(0,10)
-  );
-
-  if(dateRaw===null)return;
-
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(dateRaw)) {
-    toast("Enter date as YYYY-MM-DD.");
-    return;
+  if (db.settings.confirmPay) {
+    if (!confirm("Confirm payment of " + money(amount) + " for " + d.name + "?")) {
+      return;
+    }
   }
 
-  const m=monthData(d,currentMonth);
+  const m = monthData(d);
+  const f = monthFigures(d, currentMonth);
+  const date = new Date().toISOString().slice(0, 10);
+  const note = $("duePaymentNote").value.trim() ||
+    db.settings.paymentMethod;
 
   m.payments.push({
-    id:uid(),
-    date:dateRaw,
-    desc:"Salary payment",
-    amount
+    id: uid(),
+    date,
+    desc: note,
+    amount,
+    status: "Paid"
   });
+
+  const newBalance = Math.max(0, balance - amount);
+
+  // Save a salary-sheet snapshot with every payment.
+  db.history.push({
+    id: uid(),
+    date,
+    driverId: d.id,
+    driverName: d.name,
+    truck: d.truck || "",
+    month: currentMonth,
+    previousMiles: f.prev,
+    newMiles: f.next,
+    monthMiles: f.miles,
+    monthSalary: f.gross,
+    payment: amount,
+    remaining: newBalance,
+    note,
+    status: "Paid"
+  });
+
+  $("duePaymentAmount").value = "";
+  $("duePaymentNote").value = "";
 
   scheduleSave();
   render();
+  renderOutstanding();
+  renderHistory();
 
-  toast("Payment saved. Outstanding balance updated.");
+  toast("Payment saved. Updated balance: " + money(newBalance));
 }
 
-function renderPaymentHistory() {
-  const wrap=$("historyList");
-  if(!wrap)return;
+function loadSettingsForm() {
+  const s = db.settings;
 
-  const entries=[];
+  $("settingCompany").value = s.company;
+  $("settingManager").value = s.manager;
+  $("settingLocation").value = s.location;
+  $("defaultRate").value = db.rate;
+  $("settingCurrency").value = s.currency;
+  $("settingDecimals").value = String(s.decimals);
+  $("settingPaymentMethod").value = s.paymentMethod;
+  $("settingAddition").value = s.addition;
+  $("settingFine").value = s.fine;
+  $("settingAdvance").value = s.advance;
+  $("settingAutoMiles").checked = !!s.autoMiles;
+  $("settingConfirmPay").checked = !!s.confirmPay;
+  $("settingShowZero").checked = !!s.showZero;
+}
 
-  db.drivers.forEach(d=>{
-    Object.entries(d.months||{}).forEach(([month,m])=>{
-      (m.payments||[]).forEach(p=>{
-        entries.push({
-          name:d.name||"Unnamed Driver",
-          truck:d.truck||"—",
-          month,
-          date:p.date||month+"-01",
-          desc:p.desc||"Salary payment",
-          amount:Number(p.amount)||0
-        });
-      });
-    });
-  });
+function saveSettings() {
+  const rate = Number($("defaultRate").value);
 
-  entries.sort((a,b)=>(b.date||"").localeCompare(a.date||""));
-
-  if(!entries.length) {
-    wrap.innerHTML='<div class="empty-extra">No salary payments recorded yet.</div>';
+  if (!Number.isFinite(rate) || rate < 0) {
+    toast("Enter a valid mileage rate.");
     return;
   }
 
-  wrap.innerHTML=`
-    <table>
-      <thead>
-        <tr>
-          <th>PAYMENT DATE</th>
-          <th>DRIVER</th>
-          <th>TRUCK</th>
-          <th>SALARY MONTH</th>
-          <th>DESCRIPTION</th>
-          <th>AMOUNT PAID</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${entries.map(p=>`
-          <tr>
-            <td>${esc(p.date)}</td>
-            <td>${esc(p.name)}</td>
-            <td>${esc(p.truck)}</td>
-            <td>${esc(p.month)}</td>
-            <td>${esc(p.desc)}</td>
-            <td class="amount">${money(p.amount)}</td>
-          </tr>
-        `).join("")}
-      </tbody>
-    </table>`;
+  db.rate = rate;
+
+  db.settings = {
+    company: $("settingCompany").value.trim() || "Preserver Trans LLC",
+    manager: $("settingManager").value.trim() || "Saim Ali",
+    location: $("settingLocation").value.trim() || "USA California",
+    currency: $("settingCurrency").value,
+    decimals: Number($("settingDecimals").value),
+    paymentMethod: $("settingPaymentMethod").value,
+    addition: $("settingAddition").value.trim() || "Extra payment",
+    fine: $("settingFine").value.trim() || "Fine",
+    advance: $("settingAdvance").value.trim() || "Driver advance",
+    autoMiles: $("settingAutoMiles").checked,
+    confirmPay: $("settingConfirmPay").checked,
+    showZero: $("settingShowZero").checked
+  };
+
+  $("companyHeading").textContent = db.settings.company + " Payroll";
+  $("userLabel").textContent = db.settings.manager;
+
+  scheduleSave();
+  render();
+  toast("All settings saved.");
 }
 
-$("navSalary").onclick=()=>showView("salary");
-$("navSettings").onclick=()=>showView("settings");
+function updateDriverField(field, value) {
+  const d = driver();
+  if (!d) return;
 
-$("saveSettings").onclick=()=>{
-  const v=Number($("defaultRate").value);
-
-  if(!Number.isFinite(v)||v<0) {
-    toast("Enter a valid rate.");
-    return;
-  }
-
-  db.rate=v;
+  d[field] = value;
   scheduleSave();
 
-  toast("Default rate saved: "+money(v)+" per mile.");
+  if (field === "name") {
+    $("sheetDriverName").textContent = value;
+    renderTabs();
+  }
+}
+
+function resizePhoto(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onerror = reject;
+
+    reader.onload = () => {
+      const img = new Image();
+
+      img.onerror = reject;
+
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const max = 360;
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        resolve(canvas.toDataURL("image/jpeg", 0.72));
+      };
+
+      img.src = reader.result;
+    };
+
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadDriverPhoto(file) {
+  const d = driver();
+  if (!d || !file) return;
+
+  if (!file.type.startsWith("image/")) {
+    toast("Please select an image.");
+    return;
+  }
+
+  try {
+    d.photo = await resizePhoto(file);
+    scheduleSave();
+    render();
+    toast("Driver photo saved.");
+  } catch (e) {
+    console.error(e);
+    toast("Could not load this photo.");
+  }
+}
+
+function openDriverModal() {
+  $("driverModal").classList.remove("hidden");
+  $("newDriverName").focus();
+}
+
+function closeDriverModal() {
+  $("driverModal").classList.add("hidden");
+  $("newDriverName").value = "";
+  $("newTruckNumber").value = "";
+}
+
+function createDriver() {
+  const name = $("newDriverName").value.trim();
+  const truck = $("newTruckNumber").value.trim();
+
+  if (!name) {
+    toast("Enter driver name.");
+    return;
+  }
+
+  const d = {
+    id: uid(),
+    name,
+    truck,
+    phone: "",
+    address: "",
+    notes: "",
+    photo: "",
+    months: {}
+  };
+
+  db.drivers.push(d);
+  activeId = d.id;
+
+  closeDriverModal();
+  scheduleSave();
+  render();
+
+  toast("Driver profile created.");
+}
+
+// Navigation
+$("navSalary").onclick = () => showView("salary");
+$("navOutstanding").onclick = () => showView("outstanding");
+$("navHistory").onclick = () => showView("history");
+$("navSettings").onclick = () => showView("settings");
+
+// Month selector
+$("monthPicker").value = currentMonth;
+$("monthPicker").onchange = e => {
+  currentMonth = e.target.value || currentMonth;
+  render();
 };
 
-$("logoutBtn").onclick=async()=>{
-  if(sb)await sb.auth.signOut();
+// Driver actions
+$("addDriverBtn").onclick = openDriverModal;
+$("emptyAddBtn").onclick = openDriverModal;
+$("closeModal").onclick = closeDriverModal;
+$("cancelDriver").onclick = closeDriverModal;
+$("createDriver").onclick = createDriver;
 
-  user=null;
-  $("loginScreen").classList.remove("hidden");
-  setAuthMessage("Signed out.",true);
+$("driverName").onchange = e => updateDriverField("name", e.target.value.trim());
+$("truckNumber").onchange = e => updateDriverField("truck", e.target.value.trim());
+$("driverPhone").onchange = e => updateDriverField("phone", e.target.value.trim());
+$("driverAddress").onchange = e => updateDriverField("address", e.target.value.trim());
+$("driverNotes").onchange = e => updateDriverField("notes", e.target.value.trim());
+
+$("photoInput").onchange = e => {
+  uploadDriverPhoto(e.target.files[0]);
+  e.target.value = "";
 };
 
+// Salary sheet actions
+$("addMileageBtn").onclick = addMileage;
+$("addAdditionBtn").onclick = () => addMoneyRow("adds");
+$("addFineBtn").onclick = () => addMoneyRow("fines");
+$("addAdvanceBtn").onclick = () => addMoneyRow("advances");
+$("addRecoveryBtn").onclick = () => addMoneyRow("recoveries");
+
+$("payDueBtn").onclick = payDue;
+$("printBtn").onclick = () => window.print();
+$("printHistoryBtn").onclick = () => window.print();
+$("saveSettings").onclick = saveSettings;
+
+// Authentication
 async function authAction(mode) {
-  const email=$("authEmail").value.trim();
-  const password=$("authPassword").value;
+  const email = $("authEmail").value.trim();
+  const password = $("authPassword").value;
 
-  if(!email||!password) {
+  if (!email || !password) {
     setAuthMessage("Enter your email and password.");
     return;
   }
 
-  if(password.length<6) {
+  if (password.length < 6) {
     setAuthMessage("Password must be at least 6 characters.");
     return;
   }
 
-  setAuthMessage(
-    mode==="login"?"Signing in…":"Creating account…",
-    true
-  );
+  setAuthMessage(mode === "login" ? "Signing in..." : "Creating account...", true);
 
-  const result=mode==="login"
-    ?await sb.auth.signInWithPassword({email,password})
-    :await sb.auth.signUp({email,password});
+  const result = mode === "login"
+    ? await sb.auth.signInWithPassword({ email, password })
+    : await sb.auth.signUp({ email, password });
 
-  if(result.error) {
+  if (result.error) {
     setAuthMessage(result.error.message);
     return;
   }
 
-  if(mode==="signup"&&!result.data.session) {
-    setAuthMessage(
-      "Account created. Check your email to confirm, then log in.",
-      true
-    );
+  if (mode === "signup" && !result.data.session) {
+    setAuthMessage("Account created. Confirm your email, then log in.", true);
     return;
   }
 
-  user=result.data.user;
+  user = result.data.user;
 
-  if(user) {
+  if (user) {
     try {
       await loadCloud();
-      setAuthMessage("");
-      toast("Cloud account connected.");
-    } catch(e) {
-      setAuthMessage("Database setup error: "+e.message);
+      toast("Connected to cloud database.");
+    } catch (e) {
+      setAuthMessage("Database error: " + e.message);
     }
   }
 }
 
-$("loginBtn").onclick=()=>authAction("login");
-$("signupBtn").onclick=()=>authAction("signup");
+$("loginBtn").onclick = () => authAction("login");
+$("signupBtn").onclick = () => authAction("signup");
+
+$("logoutBtn").onclick = async () => {
+  if (sb) await sb.auth.signOut();
+  user = null;
+  $("loginScreen").classList.remove("hidden");
+  setAuthMessage("You have signed out.", true);
+};
 
 async function init() {
-  injectExtraUI();
-
-  if(!window.supabase||!SUPABASE_URL||!SUPABASE_ANON_KEY||
-    /PASTE_|remove key|your.*key/i.test(String(SUPABASE_ANON_KEY))) {
-    setAuthMessage(
-      "Setup required: add your real Supabase anon/publishable key in supabase-config.js."
-    );
+  if (
+    !window.supabase ||
+    !SUPABASE_URL ||
+    !SUPABASE_ANON_KEY ||
+    SUPABASE_ANON_KEY.includes("PASTE_")
+  ) {
+    setAuthMessage("Add your existing Supabase anon key in supabase-config.js.");
     return;
   }
 
-  sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+  sb = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY
+  );
 
-  const {data}=await sb.auth.getSession();
+  const { data, error } = await sb.auth.getSession();
 
-  if(data.session) {
-    user=data.session.user;
+  if (error) {
+    setAuthMessage(error.message);
+    return;
+  }
+
+  if (data.session) {
+    user = data.session.user;
 
     try {
       await loadCloud();
-    } catch(e) {
-      setAuthMessage("Database setup error: "+e.message);
+    } catch (e) {
+      setAuthMessage("Database error: " + e.message);
     }
   }
 }
