@@ -1,6 +1,6 @@
 const $=id=>document.getElementById(id);
-const URL=window.PRESERVER_SUPABASE_URL;
-const KEY=window.PRESERVER_SUPABASE_ANON_KEY;
+const URL=String(window.PRESERVER_SUPABASE_URL || "").trim();
+const KEY=String(window.PRESERVER_SUPABASE_ANON_KEY || "").trim();
 
 let sb=null,user=null;
 let db={rate:.52,basic:0,drivers:[],deleted:[],settings:{manager:"Saim Ali",designation:"Account Manager",company:"Preserver Trans LLC"}};
